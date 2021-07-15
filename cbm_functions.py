@@ -8,7 +8,8 @@ from sklearn.datasets import make_circles
 from tqdm import tqdm
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import InputLayer, Conv2D, BatchNormalization, Dropout
+from tensorflow.keras.layers import (InputLayer, Conv2D, BatchNormalization,
+                                     Dropout, MaxPooling2D, Flatten, Dense)
 
 
 # ------------------------------------------------------------------------------------
@@ -18,9 +19,8 @@ def create_event(nofRings, display_size=32, limits=(-7, 23, -7, 23)):
     minX, maxX, minY, maxY = limits
     # create empty display
     display = np.zeros((display_size, display_size, 1))
-    center = np.zeros((display_size, display_size, 1))
-    ring = np.zeros((display_size, display_size, 1))
-    params = []
+    params = np.zeros(6)
+    pars = []
 
     for _ in range(nofRings):
         X, y = make_circles(noise=.05, factor=.1, n_samples=(30,0))
@@ -41,29 +41,22 @@ def create_event(nofRings, display_size=32, limits=(-7, 23, -7, 23)):
                 display[x,y] = 1
 
         # set the values of the center of the circles in the feature image to 1
-        center_x, center_y = int(xshift + radius + 0.5), int(yshift + radius + 0.5)
-        center[center_x, center_y] = 1
-        params.append([xshift, yshift, radius])
+        center_x, center_y, radius = xshift + radius + 0.5, yshift + radius + 0.5, radius + 0.33
+        pars.extend([center_x, center_y, radius])
 
-    scaling = 3
-    ring = fit_rings(ring, params, scaling=scaling)[:,:,np.newaxis]
-    display_scaled = cv2.resize(display, (display.shape[1]*scaling,
-                                          display.shape[0]*scaling))[:,:,np.newaxis]
-#                                interpolation=cv2.INTER_AREA)[:,:,np.newaxis]
+    for n in range(len(pars)):
+        params[n] = pars[n]
 
-    return display, display_scaled, center, ring, params
+    return display, params
 
 
 def create_dataset(nofEvents):
-    displays, displays_scaled, centers, rings, pars = [], [], [], [], []
+    displays, pars = [], []
     for _ in tqdm(range(nofEvents)):
-        display, display_scaled, center, ring, params = create_event(int(rand.uniform(1, 3)))
+        display, params = create_event(int(rand.uniform(1, 2)))
         displays.append(display)
-        displays_scaled.append(display_scaled)
-        centers.append(center)
-        rings.append(ring)
         pars.append(params)
-    return np.array(displays), np.array(displays_scaled), np.array(centers), np.array(rings), np.array(pars, dtype='object')
+    return np.array(displays), np.array(pars)
 
 
 # -----------------------------------------------------------------------------------
@@ -92,6 +85,24 @@ def custom_loss_function(y_true, y_pred):
 # ------------------------------------------------------------------------------------
 # ------ visual functions ------------------------------------------------------------
 
+def plot_single_event(display, params, scaling=4):
+    nofEvents = display.shape[0]
+    display = cv2.resize(display, (display.shape[1]*scaling,
+                                   display.shape[0]*scaling),
+                         interpolation=cv2.INTER_AREA)
+
+    # split list into chunks of three for each ring
+    params = [params[i:i + 3] for i in range(0, len(params), 3)]
+
+    # iterate over all rings
+    for x, y, rad in params:
+        r = int(rad*scaling)
+        center_x = int(y * scaling)
+        center_y = int(x * scaling)
+
+        display = cv2.circle(display, (center_x, center_y), r, (1,1,1), 1)
+    return display
+
 def fit_rings(display, params, scaling=5):
     display = cv2.resize(display, (display.shape[1]*scaling,
                                    display.shape[0]*scaling))
@@ -110,39 +121,21 @@ def compare_true_and_predict(X_test, y_test, model, seed=42):
     plt.rcParams['figure.figsize'] = [30, 10]
     plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
     N = 8
-    threshold = 0.4
 
     rand.seed(seed)
     indices = rand.sample(range(0, 500), N)
 
     fig, ax = plt.subplots(1,N)
     for n, m in zip(range(N), indices):
-        blend = blend_plot(X_test[m], y_test[m], show_plot=False)
-        ax[n].imshow(blend)
+        img = plot_single_event(X_test[m], y_test[m])
+        ax[n].imshow(img)
 
+    y_pred = model.predict(X_test)
     fig, ax = plt.subplots(1,N)
     for n, m in zip(range(N), indices):
         img = np.expand_dims(X_test[m], 0)
-        y_pred = model.predict(img)
-
-        img1 = np.asarray(img[0,:,:,:], dtype='float64')
-        img2 = np.asarray(y_pred[0,:,:,:], dtype='float64')
-        img2[np.where(img2 < [threshold])] = 0
-        blend = blend_plot(img1, img2, (0.5, 1), False)
-        ax[n].imshow(blend)
-
-    fig, ax = plt.subplots(1,N)
-    for n, m in zip(range(N), indices):
-        img = np.expand_dims(X_test[m], 0)
-        y_pred = model.predict(img)
-
-        img2 = np.asarray(y_pred[0,:,:,:], dtype='float64')
-
-        img2[np.where(img2 < [threshold])] = 0
-    #    indices = np.where(img2 > [0.3])
-    #    x, y = indices[0], indices[1]
-    #    print(x, y)
-        ax[n].imshow(img2)
+        plot = plot_single_event(X_test[m], y_pred[m])
+        ax[n].imshow(plot)
 
 
 def blend_plot(img1, img2, weights=(1, 1), show_plot=True):
@@ -155,21 +148,15 @@ def blend_plot(img1, img2, weights=(1, 1), show_plot=True):
 if __name__ == "__main__":
     print(tf.config.list_physical_devices())
     # training data
-    displays, displays_scaled, centers, rings, params = create_dataset(10000)
+    displays, params = create_dataset(20000)
 
     data_dir = "./datasets/"
     np.save(data_dir + "displays.npy", displays)
-    np.save(data_dir + "displays_scaled.npy", displays_scaled)
-    np.save(data_dir + "centers.npy", centers)
-    np.save(data_dir + "rings.npy", rings)
-    np.savez(data_dir + "params.npz", params)
+    np.save(data_dir + "params.npy", params)
 
     # testing data
-    displays, displays_scaled, centers, rings, params = create_dataset(1000)
+    displays, params = create_dataset(1000)
 
     data_dir = "./datasets/"
     np.save(data_dir + "displays_test.npy", displays)
-    np.save(data_dir + "displays_scaled_test.npy", displays_scaled)
-    np.save(data_dir + "centers_test.npy", centers)
-    np.save(data_dir + "rings_test.npy", rings)
-    np.savez(data_dir + "params_test.npz", params)
+    np.save(data_dir + "params_test.npy", params)
