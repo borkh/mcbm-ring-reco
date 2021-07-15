@@ -11,25 +11,25 @@ sweep_config = {
         },
     'parameters': {
         'optimizer': {
-            'values': ['adam', 'sgd']
+            'values': ['adam']
             },
         'loss': {
             'values': ['MeanAbsoluteError']
             },
         'layers': {
-            'values': [2, 3, 4]
+            'values': [2, 3]
             },
         'fc_layer_size': {
-            'values': [128, 256, 512]
+            'values': [256, 512, 1028]
             },
         'conv_layer_size': {
-            'values': [32, 64, 128]
+            'values': [16, 32, 64]
             },
         'fc_activation': {
-            'values': ['relu','sigmoid']
+            'values': ['relu']
             },
         'dropout': {
-              'values': [0.3, 0.4, 0.5]
+              'values': [0.2, 0.3, 0.4]
             },
         'epochs': {
             'value': 15
@@ -38,15 +38,15 @@ sweep_config = {
             # a flat distribution between 0 and 0.1
             'distribution': 'uniform',
             'min': 0,
-            'max': 0.1
+            'max': 0.05
             },
         'batch_size': {
             # integers between 32 and 256
             # with evenly-distributed logarithms
             'distribution': 'q_log_uniform',
             'q': 1,
-            'min': math.log(32),
-            'max': math.log(256),
+            'min': math.log(16),
+            'max': math.log(128),
             }
     }
 }

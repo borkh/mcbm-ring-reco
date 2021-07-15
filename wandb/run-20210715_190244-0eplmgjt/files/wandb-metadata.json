@@ -1,0 +1,24 @@
+{
+    "os": "Linux-5.11.0-22-generic-x86_64-with-glibc2.33",
+    "python": "3.9.5",
+    "heartbeatAt": "2021-07-15T17:02:46.362620",
+    "startedAt": "2021-07-15T17:02:44.788075",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 2060",
+    "gpu_count": 1,
+    "cpu_count": 12,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/robin/cbm_ring_finder/train.py",
+    "codePath": "train.py",
+    "git": {
+        "remote": "https://github.com/borkh/cbm_ring_finder",
+        "commit": "3db5d616720c709734539b667fdaa3437d9b4e77"
+    },
+    "email": "borkh",
+    "root": "/home/robin/cbm_ring_finder",
+    "host": "kubuntu21",
+    "username": "robin",
+    "executable": "/usr/bin/python3"
+}
