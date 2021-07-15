@@ -11,16 +11,22 @@ sweep_config = {
         },
     'parameters': {
         'optimizer': {
-            'values': ['adam', 'sgd', 'adadelta', 'nadam']
+            'values': ['adam', 'sgd']
             },
         'loss': {
-            'values': ['MeanSquaredError', 'MeanAbsoluteError']
+            'values': ['MeanAbsoluteError']
             },
         'layers': {
             'values': [2, 3, 4]
             },
         'fc_layer_size': {
             'values': [128, 256, 512]
+            },
+        'conv_layer_size': {
+            'values': [32, 64, 128]
+            },
+        'fc_activation': {
+            'values': ['relu','sigmoid']
             },
         'dropout': {
               'values': [0.3, 0.4, 0.5]

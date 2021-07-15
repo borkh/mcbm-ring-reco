@@ -14,7 +14,7 @@ def create_model(input_shape, config=None):
     model.add(InputLayer(input_shape))
 
     for n in range(config.layers):
-        model.add(Conv2D(64, (3,3), padding='same', activation='relu'))
+        model.add(Conv2D(config.conv_layer_size, (3,3), padding='same', activation='relu'))
         model.add(BatchNormalization())
         model.add(MaxPooling2D(2,2))
         model.add(Dropout(config.dropout))
@@ -22,8 +22,8 @@ def create_model(input_shape, config=None):
     model.add(Flatten())
     model.add(Dense(config.fc_layer_size, activation='relu'))
     model.add(BatchNormalization())
-    model.add(Dropout(0.5))
+    model.add(Dropout(config.dropout))
 
-    model.add(Dense(6, activation='relu'))
+    model.add(Dense(6, activation=config.fc_activation))
 
     return model

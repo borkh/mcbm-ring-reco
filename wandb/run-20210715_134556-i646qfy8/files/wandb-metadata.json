@@ -1,0 +1,26 @@
+{
+    "os": "Linux-5.11.0-22-generic-x86_64-with-glibc2.33",
+    "python": "3.9.5",
+    "heartbeatAt": "2021-07-15T11:45:58.336247",
+    "startedAt": "2021-07-15T11:45:56.958724",
+    "docker": null,
+    "gpu": "NVIDIA Quadro P2000",
+    "gpu_count": 1,
+    "cpu_count": 12,
+    "cuda": "11.0.228",
+    "args": [
+        "-f",
+        "/home/robin/.local/share/jupyter/runtime/kernel-66304f3e-446a-465f-b228-14d4ad6feaae.json"
+    ],
+    "state": "running",
+    "program": "params_finder.ipynb",
+    "root": "/home/robin/ML/cbm_ring_finder",
+    "git": {
+        "remote": "https://github.com/borkh/cbm_ring_finder",
+        "commit": "8b8d47af7da6a54f06cc15c3f4c4fc2b5aa0dbde"
+    },
+    "email": "haas.robin@yahoo.de",
+    "host": "fb07pc-u102927",
+    "username": "robin",
+    "executable": "/usr/bin/python3"
+}

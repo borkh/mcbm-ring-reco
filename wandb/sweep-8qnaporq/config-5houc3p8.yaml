@@ -1,0 +1,20 @@
+wandb_version: 1
+
+batch_size:
+  value: 220
+dropout:
+  value: 0.3
+epochs:
+  value: 12
+fc_activation:
+  value: linear
+fc_layer_size:
+  value: 256
+layers:
+  value: 4
+learning_rate:
+  value: 0.029035085440223696
+loss:
+  value: MeanSquaredError
+optimizer:
+  value: adam
