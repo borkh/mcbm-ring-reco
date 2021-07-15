@@ -1,0 +1,21 @@
+{
+    "os": "Linux-5.11.0-22-generic-x86_64-with-glibc2.33",
+    "python": "3.9.5",
+    "heartbeatAt": "2021-07-14T16:12:39.206921",
+    "startedAt": "2021-07-14T16:12:37.834270",
+    "docker": null,
+    "gpu": "NVIDIA Quadro P2000",
+    "gpu_count": 1,
+    "cpu_count": 12,
+    "cuda": "11.0.228",
+    "args": [
+        "-f",
+        "/home/robin/.local/share/jupyter/runtime/kernel-6dca9df8-52ac-415e-8ffd-1097f832b21a.json"
+    ],
+    "state": "running",
+    "program": "params_finder.ipynb",
+    "root": "/home/robin/ML/cbm",
+    "host": "fb07pc-u102927",
+    "username": "robin",
+    "executable": "/usr/bin/python3"
+}
