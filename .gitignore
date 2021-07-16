@@ -1,4 +1,5 @@
-#datasets/
+datasets/
+wandb/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

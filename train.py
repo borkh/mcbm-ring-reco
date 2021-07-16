@@ -18,6 +18,7 @@ params_test = np.load(data_dir + "params_test.npy", "r")
 
 
 def train(config=None):
+    earlystop_callback = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0.001, patience=4)
     with wandb.init(config=sweep_config):
         config = wandb.config
         model = create_model(displays[0].shape, config)
@@ -25,9 +26,9 @@ def train(config=None):
         model.compile(optimizer=config.optimizer, loss=config.loss, metrics=['accuracy'])
         model.fit(displays, params, batch_size=config.batch_size,
                   epochs=config.epochs, validation_split=0.2,
-                  callbacks=[WandbCallback()])
+                  callbacks=[WandbCallback(), earlystop_callback])
 
-#sweep_id = wandb.sweep(sweep_config, project='params-finder-sweep')
-sweep_id = str("rhaas/params-finder-sweep/vtb8cndc")
+sweep_id = wandb.sweep(sweep_config, project='params-finder-sweep')
+#sweep_id = str("rhaas/params-finder-sweep/nkc5dc0a")
 
-wandb.agent(sweep_id, train, count=3)
+wandb.agent(sweep_id, train, count=2000)

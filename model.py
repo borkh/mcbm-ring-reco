@@ -13,16 +13,18 @@ def create_model(input_shape, config=None):
     model = Sequential()
     model.add(InputLayer(input_shape))
 
-    for n in range(config.layers):
-        model.add(Conv2D(config.conv_layer_size, (3,3), padding='same', activation='relu'))
+    for n in range(config.conv_layers):
+        model.add(Conv2D(config.conv_filters, config.conv_kernel_size, padding=config.padding, activation='relu'))
         model.add(BatchNormalization())
-        model.add(MaxPooling2D(2,2))
+        if config.max_pooling:
+            model.add(MaxPooling2D(config.pool_size), padding=config.padding)
         model.add(Dropout(config.dropout))
 
     model.add(Flatten())
-    model.add(Dense(config.fc_layer_size, activation='relu'))
-    model.add(BatchNormalization())
-    model.add(Dropout(config.dropout))
+    if config.fc_layer:
+        model.add(Dense(config.fc_layer_size, activation='relu'))
+        model.add(BatchNormalization())
+        model.add(Dropout(config.dropout))
 
     model.add(Dense(6, activation=config.fc_activation))
 
