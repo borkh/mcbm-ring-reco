@@ -3,19 +3,19 @@ import wandb
 import math
 
 sweep_config = {
-    'method': 'random',
+    'method': 'bayes',
     'metric' : {
         'name': 'loss',
         'goal': 'minimize'
         },
     'parameters': {
         'loss': {
-            'values': ['MeanSquaredError']
+            'value': 'MeanSquaredError'
             },
 
         # optimization parameters
         'optimizer': {
-            'values': ['adam', 'sgd']
+            'value': ['adam', 'sgd']
             },
         'learning_rate': {
             # a flat distribution between 0 and 0.1
@@ -26,19 +26,19 @@ sweep_config = {
 
         # convolutional layer parameters
         'conv_layers': {
-            'values': [2, 3, 4, 5]
+            'values': [2, 3, 4, 5, 6, 7]
             },
         'conv_filters': {
             'values': [16, 32, 64, 128]
             },
         'conv_kernel_size': {
-            'values': [tuple((2,2)), tuple((3,3))]
+            'values': [2, 3, 4, 5]
             },
         'kernel_initializer': {
             'values': ['glorot_normal', 'glorot_uniform']
             },
         'padding': {
-            'values': ['valid', 'same']
+            'value': 'same'
             },
 
         # max_pooling parameters
@@ -50,21 +50,18 @@ sweep_config = {
             },
 
         # fully connected layer parameters
-        'fc_layer': {
-            'values': [True, False]
-            },
         'fc_layer_size': {
             'values': [128, 256, 512, 1028, 2048]
             },
         'fc_activation': {
-            'values': ['relu', 'sigmoid']
+            'value': 'relu'
             },
 
         'dropout': {
-              'values': [0.1, 0.2, 0.3, 0.4, 0.5]
+              'values': [0, 0.1, 0.2, 0.3, 0.4, 0.5]
             },
         'epochs': {
-            'value': 50
+            'value': 30
             },
         'batch_size': {
             # integers between 32 and 256

@@ -50,7 +50,7 @@ def create_dataset(nofEvents):
 
 if __name__ == "__main__":
     # training data
-    displays, params = create_dataset(30000)
+    displays, params = create_dataset(50000)
 
     data_dir = "./datasets/"
     np.save(data_dir + "displays.npy", displays)

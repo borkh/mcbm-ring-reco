@@ -17,7 +17,7 @@ def create_model(input_shape, config=None):
         model.add(Conv2D(config.conv_filters, config.conv_kernel_size, padding=config.padding, activation='relu'))
         model.add(BatchNormalization())
         if config.max_pooling:
-            model.add(MaxPooling2D(config.pool_size), padding=config.padding)
+            model.add(MaxPooling2D(config.pool_size, padding=config.padding))
         model.add(Dropout(config.dropout))
 
     model.add(Flatten())
