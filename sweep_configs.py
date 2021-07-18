@@ -15,7 +15,7 @@ sweep_config = {
 
         # optimization parameters
         'optimizer': {
-            'value': ['adam', 'sgd']
+            'values': ['adam', 'sgd']
             },
         'learning_rate': {
             # a flat distribution between 0 and 0.1
