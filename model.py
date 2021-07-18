@@ -21,10 +21,9 @@ def create_model(input_shape, config=None):
         model.add(Dropout(config.dropout))
 
     model.add(Flatten())
-    if config.fc_layer:
-        model.add(Dense(config.fc_layer_size, activation='relu'))
-        model.add(BatchNormalization())
-        model.add(Dropout(config.dropout))
+    model.add(Dense(config.fc_layer_size, activation='relu'))
+    model.add(BatchNormalization())
+    model.add(Dropout(config.dropout))
 
     model.add(Dense(6, activation=config.fc_activation))
 
