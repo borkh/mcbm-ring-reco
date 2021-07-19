@@ -40,9 +40,12 @@ def train_with_flip(config=None):
                 if mse_flipped < mse:
                     flipped_params[i] = flipped_exp_rings
                     flipped[i, epoch] = 1
+            print("Flipped {} training samples ({} %)".format(
+                            np.sum(flipped[:, epoch]), 
+                            np.mean(flipped[: epoch]) * 100.))
 #        model.save("models/two_rings_32x3-CNN-params.model")
 
 sweep_id = wandb.sweep(sweep_config, project='params-finder-sweep')
 #sweep_id = str("rhaas/params-finder-sweep/rqiq6w7a")
 
-wandb.agent(sweep_id, train_without_flip, count=1000)
+wandb.agent(sweep_id, train_with_flip, count=1000)

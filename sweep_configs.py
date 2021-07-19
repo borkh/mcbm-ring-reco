@@ -43,11 +43,11 @@ sweep_config = {
 
         # max_pooling parameters
         'max_pooling': {
-            'value': [True, False]
+            'values': [True, False]
             },
         'pool_size': {
             'values': [(2,2), (3,3)]
-        }
+            },
 
         # fully connected layer parameters
         'fc_layer_size': {
