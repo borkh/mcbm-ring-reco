@@ -39,7 +39,7 @@ def fit_rings(display, params, scaling=5):
         display = cv2.circle(display, (center_x, center_y), r, (1,1,1), 1)
     return display
 
-def compare_true_and_predict(X_test, y_test, model, seed=42):
+def compare_true_and_predict(X_test, y_test, model, seed=42, show_true=True):
     plt.rcParams['figure.figsize'] = [30, 10]
     plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
     N = 8
@@ -47,10 +47,11 @@ def compare_true_and_predict(X_test, y_test, model, seed=42):
     rand.seed(seed)
     indices = rand.sample(range(0, 500), N)
 
-    fig, ax = plt.subplots(1,N)
-    for n, m in zip(range(N), indices):
-        img = plot_single_event(X_test[m], y_test[m])
-        ax[n].imshow(img)
+    if show_true:
+        fig, ax = plt.subplots(1,N)
+        for n, m in zip(range(N), indices):
+            img = plot_single_event(X_test[m], y_test[m])
+            ax[n].imshow(img)
 
     y_pred = model.predict(X_test)
     fig, ax = plt.subplots(1,N)

@@ -2,8 +2,9 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import (InputLayer, Conv2D, BatchNormalization,
-                                     Dropout, MaxPooling2D, Flatten, Dense)
+from tensorflow.keras.layers import (InputLayer, Conv2D, Conv2DTranspose,
+                                     BatchNormalization, Dropout, MaxPooling2D,
+                                     Flatten, Dense)
 
 def custom_loss_function(y_true, y_pred):
     squared_diff = tf.square(y_true - y_pred)
