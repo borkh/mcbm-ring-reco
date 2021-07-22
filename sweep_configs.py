@@ -21,18 +21,18 @@ sweep_config = {
             # a flat distribution between 0 and 0.1
             'distribution': 'uniform',
             'min': 0,
-            'max': 0.06
+            'max': 0.001
             },
 
         # convolutional layer parameters
         'conv_layers': {
-            'values': [1, 2, 3, 4]
+            'values': [2, 3, 4]
             },
         'conv_filters': {
-            'values': [16, 32, 64]
+            'values': [32, 64]
             },
         'conv_kernel_size': {
-            'values': [3, 4, 5, 6]
+            'value': 5
             },
         'kernel_initializer': {
             'value': 'glorot_normal'
@@ -43,7 +43,7 @@ sweep_config = {
 
         # max_pooling parameters
         'max_pooling': {
-            'values': [True, False]
+            'value': True
             },
         'pool_size': {
             'values': [(2,2), (3,3)]
@@ -51,17 +51,17 @@ sweep_config = {
 
         # fully connected layer parameters
         'fc_layer_size': {
-            'values': [256, 512, 1028, 2048]
+            'value': 512
             },
         'fc_activation': {
             'value': 'relu'
             },
 
         'dropout': {
-              'values': [0.1, 0.2, 0.3, 0.4, 0.5]
+              'values': [0.2, 0.3, 0.4]
             },
         'epochs': {
-            'value': 100
+            'value': 50
             },
         'batch_size': {
             # integers between 32 and 256
