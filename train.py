@@ -4,6 +4,7 @@ import numpy as np
 from model import *
 from sweep_configs import *
 from wandb.keras import WandbCallback
+from itertools import permutations, chain
 
 ## ---------------------- load data ----------------------------
 data_dir = "./datasets/"
@@ -41,23 +42,29 @@ def train_with_flip(config=None):
 
             pred_params = model.predict(displays)
             for i, (pred_rings, exp_rings) in enumerate(zip(pred_params, flipped_params)):
-                flipped_exp_rings = np.concatenate([exp_rings[3:], exp_rings[:3]])
+                # create all possible permutations for the parameters
+                nested_exp_rings = [[exp_rings[i], exp_rings[i+1], exp_rings[i+2]] for i in range(0, len(exp_rings), 3)]
+                perms = [list(chain(*i)) for i in list(permutations(nested_exp_rings))]
 
                 mse = np.mean(np.square(pred_rings - exp_rings))
-                mse_flipped = np.mean(np.square(pred_rings - flipped_exp_rings))
+                mse_flipped = []
+                for flipped_exp_rings in perms:
+                    mse_flipped.append(np.mean(np.square(pred_rings - flipped_exp_rings)))
 
-                if mse_flipped < mse:
-                    flipped_params[i] = flipped_exp_rings
+                min_mse, min_index = np.min(mse_flipped), np.argmin(mse_flipped)
+                if min_mse < mse:
+                    flipped_params[i] = perms[min_index]
                     flipped[i, epoch] = 1
             print("Flipped {} training samples ({} %)".format(
                             np.sum(flipped[:, epoch]),
                             np.mean(flipped[: epoch]) * 100.))
             # early stopping condition
-            if nof_epochs_wo_improvement >= 4:
+            if nof_epochs_wo_improvement >= 5:
                 break
-        model.save("models/1-3_rings_32x2-CNN-params.model")
+#        model.save("models/1-3_rings_32x2-CNN-params.model")
 
-sweep_id = wandb.sweep(single_run_config, project='params-finder-sweep')
+
+sweep_id = wandb.sweep(sweep_config, project='params-finder-sweep')
 #sweep_id = str("rhaas/params-finder-sweep/4tdw8jym")
 
-wandb.agent(sweep_id, train_with_flip, count=1)
+wandb.agent(sweep_id, train_with_flip, count=100)
