@@ -1,136 +1,61 @@
 #!/usr/bin/env python3
 import wandb
 import math
+from pprint import pprint
 
-sweep_config = {
-    'method': 'random',
-    'metric' : {
-        'name': 'loss',
-        'goal': 'minimize'
-        },
-    'parameters': {
-        'loss': {
-            'value': 'MeanSquaredError'
-            },
+sweep_config = dict(
+    method="random",
+    metric=dict(name='loss',
+                goal='minimize'
+    ),
+    parameters=dict(loss=dict(value="MeanSquaredError"),
+                    optimizer=dict(value="adam"),
+                    learning_rate=dict(distribution="uniform",
+                                       min=0,
+                                       max=0.001),
+                    dropout=dict(values=[0.2, 0.3, 0.4]),
+                    epochs=dict(value=50),
+                    batch_size=dict(distribution="q_log_uniform",
+                                    q=1,
+                                    min=math.log(32),
+                                    max=math.log(256)),
+                    # conv2D parameters
+                    conv_layers=dict(values=[2, 3, 4]),
+                    conv_filters=dict(values=[32, 64]),
+                    conv_kernel_size=dict(value=5),
+                    kernel_initializer=dict(value="glorot_normal"),
+                    padding=dict(value="same"),
+                    # max pooling parameters
+                    max_pooling=dict(value=True),
+                    pool_size=dict(value=(2,2)),
+                    # fully connected layer parameters
+                    fc_layer_size=dict(values=[512, 1024]),
+                    fc_activation=dict(value="relu"),
+    )
+)
 
-        # optimization parameters
-        'optimizer': {
-            'value': 'adam'
-            },
-        'learning_rate': {
-            # a flat distribution between 0 and 0.1
-            'distribution': 'uniform',
-            'min': 0,
-            'max': 0.001
-            },
-
-        # convolutional layer parameters
-        'conv_layers': {
-            'values': [2, 3, 4]
-            },
-        'conv_filters': {
-            'values': [32, 64]
-            },
-        'conv_kernel_size': {
-            'value': 5
-            },
-        'kernel_initializer': {
-            'value': 'glorot_normal'
-            },
-        'padding': {
-            'value': 'same'
-            },
-
-        # max_pooling parameters
-        'max_pooling': {
-            'value': True
-            },
-        'pool_size': {
-            'values': [(2,2), (3,3)]
-            },
-
-        # fully connected layer parameters
-        'fc_layer_size': {
-            'value': 512
-            },
-        'fc_activation': {
-            'value': 'relu'
-            },
-
-        'dropout': {
-              'values': [0.2, 0.3, 0.4]
-            },
-        'epochs': {
-            'value': 50
-            },
-        'batch_size': {
-            # integers between 32 and 256
-            # with evenly-distributed logarithms
-            'distribution': 'q_log_uniform',
-            'q': 1,
-            'min': math.log(32),
-            'max': math.log(256),
-            }
-    }
-}
-
-single_run_config = {
-    'method': 'random',
-    'metric' : {
-        'name': 'loss',
-        'goal': 'minimize'
-        },
-    'parameters': {
-        'loss': {
-            'value': 'MeanSquaredError'
-            },
-
-        # optimization parameters
-        'optimizer': {
-            'value': 'adam'
-            },
-        'learning_rate': {
-            'value': 0.01
-            },
-
-        # convolutional layer parameters
-        'conv_layers': {
-            'value': 3
-            },
-        'conv_filters': {
-            'value': 32
-            },
-        'conv_kernel_size': {
-            'value': 5
-            },
-        'kernel_initializer': {
-            'value': 'glorot_normal'
-            },
-        'padding': {
-            'value': 'same'
-            },
-
-        # max_pooling parameters
-        'max_pooling': {
-            'value': False
-            },
-
-        # fully connected layer parameters
-        'fc_layer_size': {
-            'value': 1028
-            },
-        'fc_activation': {
-            'value': 'relu'
-            },
-
-        'dropout': {
-              'value': 0.2
-            },
-        'epochs': {
-            'value': 30
-            },
-        'batch_size': {
-            'value': 128
-            }
-    }
-}
+single_run_config = dict(
+    method="random",
+    metric=dict(name='loss',
+                goal='minimize'
+    ),
+    parameters=dict(loss=dict(value="MeanSquaredError"),
+                    optimizer=dict(value="adam"),
+                    learning_rate=dict(value=0.00065),
+                    dropout=dict(value=0.4),
+                    epochs=dict(value=7),
+                    batch_size=dict(value=177),
+                    # conv2D parameters
+                    conv_layers=dict(value=2),
+                    conv_filters=dict(value=32),
+                    conv_kernel_size=dict(value=5),
+                    kernel_initializer=dict(value="glorot_normal"),
+                    padding=dict(value="same"),
+                    # max pooling parameters
+                    max_pooling=dict(value=True),
+                    pool_size=dict(value=(2,2)),
+                    # fully connected layer parameters
+                    fc_layer_size=dict(value=1024),
+                    fc_activation=dict(value="relu"),
+    )
+)

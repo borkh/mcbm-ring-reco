@@ -55,9 +55,9 @@ def train_with_flip(config=None):
             # early stopping condition
             if nof_epochs_wo_improvement >= 4:
                 break
-#        model.save("models/two_rings_32x3-CNN-params.model")
+        model.save("models/1-3_rings_32x2-CNN-params.model")
 
-sweep_id = wandb.sweep(sweep_config, project='params-finder-sweep')
+sweep_id = wandb.sweep(single_run_config, project='params-finder-sweep')
 #sweep_id = str("rhaas/params-finder-sweep/4tdw8jym")
 
-wandb.agent(sweep_id, train_with_flip, count=1000)
+wandb.agent(sweep_id, train_with_flip, count=1)

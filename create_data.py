@@ -9,7 +9,7 @@ def create_event(nofRings, display_size=32, limits=(-7, 23, -7, 23)):
     minX, maxX, minY, maxY = limits
     # create empty display
     display = np.zeros((display_size, display_size, 1))
-    params = np.zeros(6)
+    params = np.zeros(9)
     pars = []
 
     for _ in range(nofRings):
@@ -42,7 +42,7 @@ def create_event(nofRings, display_size=32, limits=(-7, 23, -7, 23)):
 def create_dataset(nofEvents):
     displays, pars = [], []
     for _ in tqdm(range(nofEvents)):
-        display, params = create_event(int(rand.uniform(2, 3)))
+        display, params = create_event(int(rand.uniform(1, 4)))
         displays.append(display)
         pars.append(params)
     return np.array(displays), np.array(pars)
