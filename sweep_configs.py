@@ -4,7 +4,7 @@ import math
 from pprint import pprint
 
 sweep_config = dict(
-    method="random",
+    method="bayes",
     metric=dict(name='loss',
                 goal='minimize'
     ),
