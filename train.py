@@ -43,7 +43,7 @@ def train_with_flip(config=None):
             pred_params = model.predict(displays)
             for i, (pred_rings, exp_rings) in enumerate(zip(pred_params, flipped_params)):
                 # create all possible permutations for the parameters
-                nested_exp_rings = [[exp_rings[i], exp_rings[i+1], exp_rings[i+2]] for i in range(0, len(exp_rings), 3)]
+                nested_exp_rings = [[exp_rings[i], exp_rings[i+1], exp_rings[i+2], exp_rings[i+3], exp_rings[i+4]] for i in range(0, len(exp_rings), 5)]
                 perms = [list(chain(*i)) for i in list(permutations(nested_exp_rings))]
 
                 mse = np.mean(np.square(pred_rings - exp_rings))
@@ -65,6 +65,6 @@ def train_with_flip(config=None):
 
 
 sweep_id = wandb.sweep(sweep_config, project='params-finder-sweep')
-#sweep_id = str("rhaas/params-finder-sweep/4tdw8jym")
+#sweep_id = str("rhaas/params-finder-sweep/kr04o6qd")
 
 wandb.agent(sweep_id, train_with_flip, count=100)

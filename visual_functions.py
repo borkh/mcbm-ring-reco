@@ -8,35 +8,22 @@ import tensorflow as tf
 
 
 def plot_single_event(display, params, scaling=4):
-    nofEvents = display.shape[0]
-    display = cv2.resize(display, (display.shape[1]*scaling,
-                                   display.shape[0]*scaling),
+    display = cv2.resize(display, (display.shape[0]*scaling,
+                                   display.shape[1]*scaling),
                          interpolation=cv2.INTER_AREA)
 
-    # split list into chunks of three for each ring
-    params = [params[i:i + 3] for i in range(0, len(params), 3)]
+    # split list into chunks of five for each ellipse
+    params = [params[i:i + 5] for i in range(0, len(params), 5)]
 
     # iterate over all rings
-    for x, y, rad in params:
-        r = int(rad*scaling)
+    for x, y, major, minor, angle in params:
         center_x = int(y * scaling)
         center_y = int(x * scaling)
+        major = int(major * scaling)
+        minor = int(minor * scaling)
 
-        display = cv2.circle(display, (center_x, center_y), r, (1,1,1), 1)
-    return display
-
-def fit_rings(display, params, scaling=5):
-    display = cv2.resize(display, (display.shape[1]*scaling,
-                                   display.shape[0]*scaling))
-#                         interpolation=cv2.INTER_AREA)
-
-    # fit every ring in display
-    for x, y, rad in params:
-        r = int(rad*scaling)
-        center_x = int((rad +.5 + y) * scaling)
-        center_y = int((rad +.5 + x) * scaling)
-
-        display = cv2.circle(display, (center_x, center_y), r, (1,1,1), 1)
+        display = cv2.ellipse(display, (center_x, center_y), (major, minor),
+                              angle+90, 0, 360, (1,1,1))
     return display
 
 def compare_true_and_predict(X_test, y_test, model, seed=42, show_true=True):
