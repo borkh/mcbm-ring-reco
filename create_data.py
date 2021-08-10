@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
 import random as rand
-import imutils
 from sklearn.datasets import make_circles
 from tqdm import tqdm
 
@@ -27,7 +26,10 @@ def create_event(nofRings, display_size=48, limits=(7, 41, 7, 41)):
         X[:,0] *= major
         X[:,1] *= minor
         # rotate ellipse
-        angle = int(rand.uniform(0, 90))
+        if major == minor:
+            angle = 0
+        else:
+            angle = rand.randint(0, 90)
         X = rotate(X, angle)
         # convert all entries to integers
         X = np.round(X, 0).astype('int32')
@@ -61,14 +63,14 @@ def create_dataset(nofEvents):
 
 if __name__ == "__main__":
     # training data
-    displays, params = create_dataset(10000)
+    displays, params = create_dataset(100000)
 
     data_dir = "./datasets/"
     np.save(data_dir + "displays.npy", displays)
     np.save(data_dir + "params.npy", params)
 
     # testing data
-    displays, params = create_dataset(1000)
+    displays, params = create_dataset(5000)
 
     data_dir = "./datasets/"
     np.save(data_dir + "displays_ellipse.npy", displays)

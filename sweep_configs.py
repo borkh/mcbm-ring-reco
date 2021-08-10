@@ -43,7 +43,7 @@ single_run_config = dict(
                     optimizer=dict(value="adam"),
                     learning_rate=dict(value=0.00065),
                     dropout=dict(value=0.4),
-                    epochs=dict(value=15),
+                    epochs=dict(value=50),
                     batch_size=dict(value=177),
                     # conv2D parameters
                     conv_layers=dict(value=2),
