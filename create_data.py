@@ -18,19 +18,27 @@ def create_event(nofRings, display_size=48, limits=(7, 41, 7, 41)):
     pars = []
 
     for _ in range(nofRings):
-        X, y = make_circles(noise=.0, factor=.1, n_samples=(rand.randint(20, 30),0))
+        X, y = make_circles(noise=.09, factor=.1, n_samples=(rand.randint(15, 30),0))
 
         # define semi-major and semi-minor axes of ellipse
         r = rand.randint(6,8)
-        major, minor = r + rand.randint(1, 2), r + rand.randint(1, 2)
+
+        ## uncomment to create ellipses
+        #major, minor = r + rand.randint(1, 2), r + rand.randint(1, 2)
+
+        # uncomment to create rings
+        major, minor = r, r
+
         X[:,0] *= major
         X[:,1] *= minor
+
         # rotate ellipse
         if major == minor:
-            angle = 0
+            angle = 0 # angles of rings are always set to zero
         else:
             angle = rand.randint(0, 90)
         X = rotate(X, angle)
+
         # convert all entries to integers
         X = np.round(X, 0).astype('int32')
 
@@ -63,15 +71,15 @@ def create_dataset(nofEvents):
 
 if __name__ == "__main__":
     # training data
-    displays, params = create_dataset(100000)
+    displays, params = create_dataset(2000000)
 
     data_dir = "./datasets/"
     np.save(data_dir + "displays.npy", displays)
     np.save(data_dir + "params.npy", params)
 
     # testing data
-    displays, params = create_dataset(5000)
+    displays, params = create_dataset(1000)
 
     data_dir = "./datasets/"
-    np.save(data_dir + "displays_ellipse.npy", displays)
-    np.save(data_dir + "params_ellipse.npy", params)
+    np.save(data_dir + "displays_test.npy", displays)
+    np.save(data_dir + "params_test.npy", params)

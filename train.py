@@ -59,12 +59,12 @@ def train_with_flip(config=None):
                             np.sum(flipped[:, epoch]),
                             np.mean(flipped[: epoch]) * 100.))
             # early stopping condition
-            if nof_epochs_wo_improvement >= 10:
+            if nof_epochs_wo_improvement >= 5:
                 break
-        model.save("models/5-conv-2-fc-CNN.model")
+#        model.save("models/32x2-CNN.model")
 
 
-sweep_id = wandb.sweep(single_run_config, project='ellipses-params-finder')
+sweep_id = wandb.sweep(sweep_config, project='ellipses-params-finder')
 #sweep_id = str("rhaas/params-finder-sweep/kr04o6qd")
 
 wandb.agent(sweep_id, train_with_flip, count=1000)
