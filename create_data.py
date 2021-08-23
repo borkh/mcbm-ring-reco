@@ -17,6 +17,13 @@ def create_event(nofRings, display_size=48, limits=(7, 41, 7, 41)):
     params = np.zeros(15)
     pars = []
 
+    # create noise
+    noise = rand.randint(4, 7)
+    for _ in range(noise):
+        x, y  = rand.randint(minX, maxX), rand.randint(minY, maxY)
+        display[x,y] = 1
+
+    # create ellipses
     for _ in range(nofRings):
         X, y = make_circles(noise=.09, factor=.1, n_samples=(rand.randint(15, 30),0))
 
@@ -71,7 +78,7 @@ def create_dataset(nofEvents):
 
 if __name__ == "__main__":
     # training data
-    displays, params = create_dataset(2000000)
+    displays, params = create_dataset(3000000)
 
     data_dir = "./datasets/"
     np.save(data_dir + "displays.npy", displays)
