@@ -31,41 +31,25 @@ def create_model(input_shape, output_shape, config=None):
 
     return model
 
-def create_model2(input_shape, output_shape, config=None):
+def create_model2(input_shape, output_shape):
     model = Sequential()
     model.add(InputLayer(input_shape))
 
-    model.add(Conv2D(32, 5,
-                     padding=config.padding, activation='relu'))
+    model.add(Conv2D(32, 5, activation='relu'))
     model.add(BatchNormalization())
-    model.add(MaxPooling2D(config.pool_size, padding=config.padding))
-    model.add(Dropout(config.dropout))
+    model.add(MaxPooling2D((2,2)))
+    model.add(Dropout(0.3))
 
-    model.add(Conv2D(64, 3,
-                     padding=config.padding, activation='relu'))
+    model.add(Conv2D(64, 3, activation='relu'))
     model.add(BatchNormalization())
-    model.add(MaxPooling2D(config.pool_size, padding=config.padding))
-    model.add(Dropout(config.dropout))
-
-    model.add(Conv2D(128, 3,
-                     padding=config.padding, activation='relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling2D(config.pool_size, padding=config.padding))
-    model.add(Dropout(config.dropout))
-
-    model.add(Conv2D(4, 1,
-                     padding=config.padding, activation='relu'))
-    model.add(BatchNormalization())
-    model.add(Dropout(config.dropout))
+    model.add(MaxPooling2D((2,2)))
+    model.add(Dropout(0.3))
 
     model.add(Flatten())
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(256, activation='relu'))
     model.add(BatchNormalization())
-    model.add(Dropout(config.dropout))
-    model.add(Dense(128, activation='relu'))
-    model.add(BatchNormalization())
-    model.add(Dropout(config.dropout))
+    model.add(Dropout(0.3))
 
-    model.add(Dense(output_shape, activation=config.fc_activation))
+    model.add(Dense(output_shape, activation='relu'))
 
     return model

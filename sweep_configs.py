@@ -17,8 +17,8 @@ sweep_config = dict(
                     epochs=dict(value=30),
                     batch_size=dict(distribution="q_log_uniform",
                                     q=1,
-                                    min=math.log(1000),
-                                    max=math.log(2000)),
+                                    min=math.log(1500),
+                                    max=math.log(2500)),
                     # conv2D parameters
                     conv_layers=dict(values=[2, 3, 4]),
                     conv_filters=dict(values=[16, 32, 64]),

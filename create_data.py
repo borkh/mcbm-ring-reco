@@ -3,6 +3,7 @@ import numpy as np
 import random as rand
 from sklearn.datasets import make_circles
 from tqdm import tqdm
+import os
 
 def rotate(img, angle):
     # transorm angle from deg to rad
@@ -78,15 +79,28 @@ def create_dataset(nofEvents):
 
 if __name__ == "__main__":
     # training data
-    displays, params = create_dataset(3000000)
+    train_dir = "./datasets/train/"
+    test_dir = "./datasets/test/"
 
-    data_dir = "./datasets/"
-    np.save(data_dir + "displays.npy", displays)
-    np.save(data_dir + "params.npy", params)
+    for train_X in os.listdir(train_dir + "X/"):
+        os.remove(train_dir + "X/" + train_X)
+    for test_X in os.listdir(test_dir + "X/"):
+        os.remove(test_dir + "X/" + test_X)
+
+    for train_y in os.listdir(train_dir + "y/"):
+        os.remove(train_dir + "y/" + train_y)
+    for test_y in os.listdir(test_dir + "y/"):
+        os.remove(test_dir + "y/" + test_y)
+
+    for i in range(10000):
+        print(i)
+        displays, params = create_dataset(512)
+        np.savez_compressed(train_dir + "X/X{}.npz".format(i), displays)
+        np.savez_compressed(train_dir + "y/y{}.npz".format(i), params)
 
     # testing data
-    displays, params = create_dataset(1000)
-
-    data_dir = "./datasets/"
-    np.save(data_dir + "displays_test.npy", displays)
-    np.save(data_dir + "params_test.npy", params)
+    for i in range(10000):
+        print(i)
+        displays, params = create_dataset(102)
+        np.savez_compressed(test_dir + "X/X{}.npz".format(i), displays)
+        np.savez_compressed(test_dir + "y/y{}.npz".format(i), params)
