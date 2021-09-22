@@ -92,15 +92,15 @@ if __name__ == "__main__":
     for test_y in os.listdir(test_dir + "y/"):
         os.remove(test_dir + "y/" + test_y)
 
-    for i in range(10000):
+    for i in range(300):
         print(i)
-        displays, params = create_dataset(512)
+        displays, params = create_dataset(256)
         np.savez_compressed(train_dir + "X/X{}.npz".format(i), displays)
         np.savez_compressed(train_dir + "y/y{}.npz".format(i), params)
 
     # testing data
-    for i in range(10000):
+    for i in range(300):
         print(i)
-        displays, params = create_dataset(102)
+        displays, params = create_dataset(78)
         np.savez_compressed(test_dir + "X/X{}.npz".format(i), displays)
         np.savez_compressed(test_dir + "y/y{}.npz".format(i), params)

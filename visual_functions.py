@@ -32,7 +32,7 @@ def compare_true_and_predict(X_test, y_test, model, seed=42, show_true=True):
     N = 8
 
     rand.seed(seed)
-    indices = rand.sample(range(0, 500), N)
+    indices = rand.sample(range(0, y_test.shape[0]), N)
 
     if show_true:
         fig, ax = plt.subplots(1,N)

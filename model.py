@@ -15,7 +15,7 @@ def create_model(input_shape, output_shape, config=None):
     model.add(InputLayer(input_shape))
 
     for n in range(config.conv_layers):
-        model.add(Conv2D(config.conv_filters, config.conv_kernel_size,
+        model.add(Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)), config.conv_kernel_size,
                          padding=config.padding, activation='relu'))
         model.add(BatchNormalization())
         if config.max_pooling:
