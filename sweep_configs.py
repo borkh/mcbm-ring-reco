@@ -16,8 +16,8 @@ sweep_config = dict(
                     dropout=dict(values=[0.3, 0.4]),
                     epochs=dict(value=50),
                     # conv2D parameters
-                    conv_layers=dict(values=[3, 4, 5]),
-                    nof_initial_filters=dict(values=[8, 16, 32]),
+                    conv_layers=dict(values=[4, 5, 6]),
+                    nof_initial_filters=dict(values=[32, 48, 64]),
                     conv_kernel_size=dict(values=[7, 9]),
 
                     kernel_initializer=dict(value="glorot_normal"),

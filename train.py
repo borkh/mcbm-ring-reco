@@ -91,7 +91,7 @@ if __name__ == "__main__":
     datagen = CustomDataGen(train_dir)
     testgen = CustomDataGen(test_dir)
 
-    sweep_id = wandb.sweep(sweep_config, project='ellipses-params-finder')
-#    sweep_id = str("rhaas/ellipses-params-finder/dwosu8lu")
+#    sweep_id = wandb.sweep(sweep_config, project='ellipses-params-finder')
+    sweep_id = str("rhaas/ellipses-params-finder/dcchdh16")
 
     wandb.agent(sweep_id, train_with_flip, count=1000)
