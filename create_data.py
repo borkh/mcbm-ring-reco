@@ -70,7 +70,7 @@ def create_event(nofRings, display_size=48, limits=(7, 41, 7, 41)):
 
 def create_dataset(nofEvents):
     displays, pars = [], []
-    for _ in tqdm(range(nofEvents)):
+    for _ in range(nofEvents):
         display, params = create_event(rand.randint(1, 3))
         displays.append(display)
         pars.append(params)
@@ -92,15 +92,14 @@ if __name__ == "__main__":
     for test_y in os.listdir(test_dir + "y/"):
         os.remove(test_dir + "y/" + test_y)
 
-    for i in range(300):
-        print(i)
+    print("Creating training data...")
+    for i in tqdm(range(300)):
         displays, params = create_dataset(256)
         np.savez_compressed(train_dir + "X/X{}.npz".format(i), displays)
         np.savez_compressed(train_dir + "y/y{}.npz".format(i), params)
 
-    # testing data
-    for i in range(300):
-        print(i)
+    print("Creating testing data...")
+    for i in tqdm(range(300)):
         displays, params = create_dataset(78)
         np.savez_compressed(test_dir + "X/X{}.npz".format(i), displays)
         np.savez_compressed(test_dir + "y/y{}.npz".format(i), params)

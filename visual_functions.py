@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random as rand
 import tensorflow as tf
+from tqdm import tqdm
+from itertools import product
 
 
 def plot_single_event(display, params, scaling=4):
@@ -43,14 +45,29 @@ def compare_true_and_predict(X_test, y_test, model, seed=42, show_true=True):
     y_pred = model.predict(X_test)
     fig, ax = plt.subplots(1,N)
     for n, m in zip(range(N), indices):
-        img = np.expand_dims(X_test[m], 0)
         plot = plot_single_event(X_test[m], y_pred[m])
         ax[n].imshow(plot)
 
+def show_predict(X_test, y_test, model, shift=0, save=None):
+    plt.rcParams['figure.figsize'] = [30, 30]
+    plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
+    save_dir = "./pred_imgs/"
+    N = 8
 
-def blend_plot(img1, img2, weights=(1, 1), show_plot=True):
-    blend = cv2.addWeighted(img1, weights[0], img2, weights[1], 0.0)
-    if show_plot:
-        plt.imshow(blend, cmap="gray")
-        plt.show()
-    return blend
+    y_pred = model.predict(X_test)
+    fig, ax = plt.subplots(N,N)
+    for i, (n, m) in enumerate(product(range(N), range(N))):
+        plot = plot_single_event(X_test[i+shift*64], y_pred[i+shift*64])
+        ax[n][m].imshow(plot)
+
+    if save is not None:
+        plt.savefig(save_dir + save)
+
+def save_pred_imgs(X_test, y_test, model):
+    save_dir = "./pred_imgs/"
+    y_pred = model.predict(X_test)
+    print("Saving plots...")
+    for n in tqdm(range(y_test.shape[0])):
+        plot = plot_single_event(X_test[n], y_pred[n])
+        plt.imshow(plot)
+        plt.savefig(save_dir + "pred{}.png".format(n))

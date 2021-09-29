@@ -9,29 +9,30 @@ from itertools import permutations, chain
 from tqdm import tqdm
 
 class CustomDataGen(tf.keras.utils.Sequence):
-    def __init__(self, directory, input_size=(48, 48, 1)):
-        self.input_size = input_size
+    def __init__(self, directory):
         self.n = nof_files
+        self.directory = directory
 
     def on_epoch_end(self):
-        print()
-        print("Flipping")
+        print("\nFlipping parameters in ", self.directory)
         flipped_total = []
         global model
         for i in tqdm(range(self.n)):
-            nameX = train_dir + "X/X{}.npz".format(i)
-            namey = train_dir + "y/y{}.npz".format(i)
+            nameX = self.directory + "X/X{}.npz".format(i)
+            namey = self.directory + "y/y{}.npz".format(i)
 
             X = np.load(nameX, "r")['arr_0']
             y = np.load(namey, "r")['arr_0']
             pars, flipped = flip_pars(model, X, y)
             flipped_total.append(flipped)
             np.savez_compressed(namey, pars)
-        print("Flipped {} training samples ({} %)".format(np.sum(flipped_total), np.sum(flipped_total) / y.shape[0]))
+        print("Flipped {} training samples of {} total samples ({} %)".format(np.sum(flipped_total),
+                                                                              self.n * y.shape[0],
+                                                                              np.sum(flipped_total) / (self.n * y.shape[0])))
 
     def __getitem__(self, index):
-        X = np.load(train_dir + "X/X{}.npz".format(index), "r")['arr_0']
-        y = np.load(train_dir + "y/y{}.npz".format(index), "r")['arr_0']
+        X = np.load(self.directory + "X/X{}.npz".format(index), "r")['arr_0']
+        y = np.load(self.directory + "y/y{}.npz".format(index), "r")['arr_0']
         return X, y
 
     def __len__(self):
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     datagen = CustomDataGen(train_dir)
     testgen = CustomDataGen(test_dir)
 
-#    sweep_id = wandb.sweep(sweep_config, project='ellipses-params-finder')
-    sweep_id = str("rhaas/ellipses-params-finder/dcchdh16")
+    sweep_id = wandb.sweep(single_run_config, project='testing')
+#    sweep_id = str("rhaas/ellipses-params-finder/4xlmkw8y")
 
     wandb.agent(sweep_id, train_with_flip, count=1000)

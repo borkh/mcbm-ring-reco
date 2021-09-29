@@ -16,7 +16,7 @@ sweep_config = dict(
                     dropout=dict(values=[0.3, 0.4]),
                     epochs=dict(value=50),
                     # conv2D parameters
-                    conv_layers=dict(values=[4, 5, 6]),
+                    conv_layers=dict(values=[4, 5]),
                     nof_initial_filters=dict(values=[32, 48, 64]),
                     conv_kernel_size=dict(values=[7, 9]),
 
@@ -38,14 +38,14 @@ single_run_config = dict(
     ),
     parameters=dict(loss=dict(value="MeanSquaredError"),
                     optimizer=dict(value="adam"),
-                    learning_rate=dict(value=0.0005792),
-                    dropout=dict(value=0.3),
+                    learning_rate=dict(value=0.0006),
+                    dropout=dict(value=0.0),
                     epochs=dict(value=20),
 #                    batch_size=dict(value=45),
                     # conv2D parameters
                     conv_layers=dict(value=3),
-                    nof_initial_filters=dict(value=13),
-                    conv_kernel_size=dict(value=5),
+                    nof_initial_filters=dict(value=16),
+                    conv_kernel_size=dict(value=7),
                     kernel_initializer=dict(value="glorot_normal"),
                     padding=dict(value="same"),
                     # max pooling parameters
