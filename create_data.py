@@ -11,25 +11,27 @@ def rotate(img, angle):
     rotation_matrix = np.array([np.cos(angle), -np.sin(angle), np.sin(angle), np.cos(angle)]).reshape(2,2)
     return img @ rotation_matrix
 
-def create_event(nofRings, display_size=48, limits=(7, 41, 7, 41)):
+def create_event(nofRings, display_size=(72, 32)):
+    limits=(7, display_size[0] - 7, 7, display_size[1] - 7)
     minX, maxX, minY, maxY = limits
+
     # create empty display
-    display = np.zeros((display_size, display_size, 1))
+    display = np.zeros((display_size[0], display_size[1], 1))
     params = np.zeros(15)
     pars = []
 
     # create noise
-    noise = rand.randint(4, 7)
+    noise = 0 #rand.randint(4, 7)
     for _ in range(noise):
         x, y  = rand.randint(minX, maxX), rand.randint(minY, maxY)
         display[x,y] = 1
 
     # create ellipses
     for _ in range(nofRings):
-        X, y = make_circles(noise=.09, factor=.1, n_samples=(rand.randint(15, 30),0))
+        X, y = make_circles(noise=.15, factor=.1, n_samples=(rand.randint(15, 22),0))
 
         # define semi-major and semi-minor axes of ellipse
-        r = rand.randint(6,8)
+        r = rand.randint(3,7)
 
         ## uncomment to create ellipses
         #major, minor = r + rand.randint(1, 2), r + rand.randint(1, 2)
@@ -57,7 +59,7 @@ def create_event(nofRings, display_size=48, limits=(7, 41, 7, 41)):
 
         # set the values of the positions of the circles in the display image to 1
         for x, y in zip(X[:,0], X[:,1]):
-            if x > 0 and x < display_size and y > 0 and y < display_size:
+            if x > 0 and x < display_size[0] and y > 0 and y < display_size[1]:
                 display[x,y] = 1
 
         center_x, center_y = xshift + 0.5, yshift + 0.5
@@ -93,13 +95,13 @@ if __name__ == "__main__":
         os.remove(test_dir + "y/" + test_y)
 
     print("Creating training data...")
-    for i in tqdm(range(300)):
-        displays, params = create_dataset(256)
+    for i in tqdm(range(500)):
+        displays, params = create_dataset(512)
         np.savez_compressed(train_dir + "X/X{}.npz".format(i), displays)
         np.savez_compressed(train_dir + "y/y{}.npz".format(i), params)
 
     print("Creating testing data...")
-    for i in tqdm(range(300)):
-        displays, params = create_dataset(78)
+    for i in tqdm(range(500)):
+        displays, params = create_dataset(154)
         np.savez_compressed(test_dir + "X/X{}.npz".format(i), displays)
         np.savez_compressed(test_dir + "y/y{}.npz".format(i), params)

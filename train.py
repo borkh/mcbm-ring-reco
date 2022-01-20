@@ -69,15 +69,14 @@ def train_with_flip(config=None):
         global params
         global model
         config = wandb.config
-        model = create_model(displays[0].shape, params.shape[-1], config)
+        model = create_plain_net(displays[0].shape, params.shape[-1], config)
+#        model = create_res_net(displays[0].shape, params.shape[-1], config)
         model.summary()
-
-        model.compile(optimizer=config.optimizer, loss=config.loss, metrics=['accuracy'])
 
         model.fit(datagen, steps_per_epoch=nof_files, epochs=config.epochs,
                   validation_data=testgen, callbacks=[WandbCallback(),
                                                       es])
-#        model.save("models/128x4-CNN.model")
+        model.save("models/256x4-CNN-mcbm.model")
 
 
 if __name__ == "__main__":
@@ -92,7 +91,7 @@ if __name__ == "__main__":
     datagen = CustomDataGen(train_dir)
     testgen = CustomDataGen(test_dir)
 
-    sweep_id = wandb.sweep(single_run_config, project='testing')
+    sweep_id = wandb.sweep(single_run_config, project='ellipses-params-finder')
 #    sweep_id = str("rhaas/ellipses-params-finder/4xlmkw8y")
 
-    wandb.agent(sweep_id, train_with_flip, count=1000)
+    wandb.agent(sweep_id, train_with_flip, count=1)
