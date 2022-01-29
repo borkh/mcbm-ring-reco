@@ -14,6 +14,8 @@ class CustomDataGen(tf.keras.utils.Sequence):
         self.directory = directory
 
     def on_epoch_end(self):
+        pass
+        """
         print("\nFlipping parameters in ", self.directory)
         flipped_total = []
         global model
@@ -28,7 +30,8 @@ class CustomDataGen(tf.keras.utils.Sequence):
             np.savez_compressed(namey, pars)
         print("Flipped {} training samples of {} total samples ({} %)".format(np.sum(flipped_total),
                                                                               self.n * y.shape[0],
-                                                                              np.sum(flipped_total) / (self.n * y.shape[0])))
+                                                                              100 * np.sum(flipped_total) / (self.n * y.shape[0])))
+        """
 
     def __getitem__(self, index):
         X = np.load(self.directory + "X/X{}.npz".format(index), "r")['arr_0']
@@ -63,20 +66,28 @@ def flip_pars(model, disps, pars):
     return pars, np.sum(flipped[:])
 
 def train_with_flip(config=None):
-    es = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0.001, patience=5)
+    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=100)
     with wandb.init(config=sweep_config):
         global displays
         global params
         global model
         config = wandb.config
-        model = create_plain_net(displays[0].shape, params.shape[-1], config)
-#        model = create_res_net(displays[0].shape, params.shape[-1], config)
+
+#        model_path = "models/no_ee-CNN-mcbm.model"
+        model_path = "models/test_wo_flip-CNN-mcbm.model"
+
+#        print("Loading model {} and continuing training...\n".format(model_path))
+#        model = tf.keras.models.load_model(model_path)
+
+        model = create_simple_net(displays[0].shape, params.shape[-1], config)
+        #model = create_plain_net(displays[0].shape, params.shape[-1], config)
         model.summary()
 
         model.fit(datagen, steps_per_epoch=nof_files, epochs=config.epochs,
                   validation_data=testgen, callbacks=[WandbCallback(),
                                                       es])
-        model.save("models/256x4-CNN-mcbm.model")
+        print("Saving model {}...\n".format(model_path))
+        model.save(model_path)
 
 
 if __name__ == "__main__":
@@ -91,6 +102,7 @@ if __name__ == "__main__":
     datagen = CustomDataGen(train_dir)
     testgen = CustomDataGen(test_dir)
 
+#    sweep_id = wandb.sweep(sweep_config, project='ellipses-params-finder')
     sweep_id = wandb.sweep(single_run_config, project='ellipses-params-finder')
 #    sweep_id = str("rhaas/ellipses-params-finder/4xlmkw8y")
 

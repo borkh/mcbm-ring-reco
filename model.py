@@ -69,7 +69,7 @@ def create_plain_net(input_shape, output_shape, config=None):
     t = inputs
 #    t = BatchNormalization()(inputs)
 
-    for n in range(config.conv_layers):
+    for n in reversed(range(config.conv_layers)):
         t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)),
                    config.conv_kernel_size, padding=config.padding,
                    activation='relu')(t)
@@ -79,6 +79,30 @@ def create_plain_net(input_shape, output_shape, config=None):
     t = Flatten()(t)
     t = Dense(config.fc_layer_size, activation="relu")(t)
     t = Dropout(config.dropout)(t)
+
+    outputs = Dense(output_shape, activation=config.fc_activation)(t)
+
+    model = Model(inputs, outputs)
+    model.compile(optimizer=config.optimizer, loss=config.loss, metrics=['accuracy'])
+
+    return model
+
+def create_simple_net(input_shape, output_shape, config=None):
+    inputs = Input(input_shape)
+
+    t = inputs
+#    t = BatchNormalization()(inputs)
+
+    for n in [32, 16, 10, 8]:
+        t = Conv2D(n, config.conv_kernel_size, padding=config.padding,
+                   activation='relu')(t)
+    #    t = BatchNormalization()(t)
+        t = MaxPooling2D(config.pool_size, padding=config.padding)(t)
+
+    t = Flatten()(t)
+    t = Dense(config.fc_layer_size, activation="relu")(t)
+#    t = Dense(config.fc_layer_size/2, activation="relu")(t)
+#    t = Dropout(config.dropout)(t)
 
     outputs = Dense(output_shape, activation=config.fc_activation)(t)
 
