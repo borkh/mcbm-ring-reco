@@ -38,8 +38,8 @@ single_run_config = dict(
     ),
     parameters=dict(loss=dict(value="MeanSquaredError"),
                     optimizer=dict(value="adam"),
-                    learning_rate=dict(value=0.002),
-                    dropout=dict(value=0.0),
+                    learning_rate=dict(value=0.0005),
+                    dropout=dict(value=0.05),
                     epochs=dict(value=100),
 #                    batch_size=dict(value=45),
                     # conv2D parameters

@@ -76,12 +76,12 @@ def train_with_flip(config=None):
 #        model_path = "models/no_ee-CNN-mcbm.model"
         model_path = "models/test_wo_flip-CNN-mcbm.model"
 
-#        print("Loading model {} and continuing training...\n".format(model_path))
-#        model = tf.keras.models.load_model(model_path)
+        print("Loading model {} and continuing training...\n".format(model_path))
+        model = tf.keras.models.load_model(model_path)
 
-        model = create_simple_net(displays[0].shape, params.shape[-1], config)
+        #model = create_simple_net(displays[0].shape, params.shape[-1], config)
         #model = create_plain_net(displays[0].shape, params.shape[-1], config)
-        model.summary()
+        #model.summary()
 
         model.fit(datagen, steps_per_epoch=nof_files, epochs=config.epochs,
                   validation_data=testgen, callbacks=[WandbCallback(),

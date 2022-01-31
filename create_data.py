@@ -44,13 +44,23 @@ class Display(np.ndarray):
         if obj is None: return
         self.info = getattr(obj, 'info', None)
 
-    def add_noise(self, nof_noise_hits=0):
+    def __add_noise(self, nof_noise_hits=0):
         for _ in range(nof_noise_hits):
             x, y  = rand.randint(self.minX, self.maxX), rand.randint(self.minY, self.maxY)
             self[x,y] = 1
 
-    def add_ellipses(self, nof_rings):
-        indices = sorted(rand.choices(range(self.flatten().shape[0]), k=nof_rings)) # create indices to order rings (top left to bottom right)
+    def __get_indices(self, nof_rings):
+        self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
+        indices = np.where(self.flatten() == 1)[0] # get the indices of that area
+        # uncomment to have no restrictions of ellipses centers
+        #indices = range(self.flatten().shape[0])
+        self[:,:] = 0
+
+        return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
+
+
+    def add_ellipses(self, nof_rings, nof_noise_hits=None):
+        indices = self.__get_indices(nof_rings)
         for n in range(nof_rings):
             nof_hits = rand.randint(24, 33)
             X, y = make_circles(noise=.12, factor=.1, n_samples=(nof_hits, 0))
@@ -80,6 +90,9 @@ class Display(np.ndarray):
 
             for i in range(5):
                 self.params[n*5 + i] = pars[i]
+
+        if nof_noise_hits is not None:
+            self.__add_noise(nof_noise_hits)
 
 def create_dataset(nofEvents):
     displays, pars = [], []
