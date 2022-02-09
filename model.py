@@ -35,7 +35,7 @@ def residual_block(x: Tensor, downsample: bool, filters: int,
     out = relu_bn(out)
     return out
 
-def create_res_net(input_shape, output_shape, config=None):
+def res_net(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
     num_filters = config.nof_initial_filters
 
@@ -63,37 +63,36 @@ def create_res_net(input_shape, output_shape, config=None):
 
     return  model
 
-def create_plain_net(input_shape, output_shape, config=None):
+def plain_net(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
 
     t = inputs
 #    t = BatchNormalization()(inputs)
 
-    for n in reversed(range(config.conv_layers)):
+    for n in range(config.conv_layers):
         t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)),
                    config.conv_kernel_size, padding=config.padding,
-                   activation='relu')(t)
-    #    t = BatchNormalization()(t)
-        t = MaxPooling2D(config.pool_size, padding=config.padding)(t)
+                   activation='relu', name="block{}_conv".format(n))(t)
+        t = MaxPooling2D(config.pool_size, padding=config.padding, name="block{}_pool".format(n))(t)
 
     t = Flatten()(t)
-    t = Dense(config.fc_layer_size, activation="relu")(t)
+    t = Dense(config.fc_layer_size, activation="relu", name="fc")(t)
     t = Dropout(config.dropout)(t)
 
-    outputs = Dense(output_shape, activation=config.fc_activation)(t)
+    outputs = Dense(output_shape, activation=config.fc_activation, name="predictions")(t)
 
     model = Model(inputs, outputs)
     model.compile(optimizer=config.optimizer, loss=config.loss, metrics=['accuracy'])
 
     return model
 
-def create_simple_net(input_shape, output_shape, config=None):
+def simple_net(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
 
     t = inputs
 #    t = BatchNormalization()(inputs)
 
-    for n in [32, 16, 10, 8]:
+    for n in [4, 8, 16]:
         t = Conv2D(n, config.conv_kernel_size, padding=config.padding,
                    activation='relu')(t)
     #    t = BatchNormalization()(t)
@@ -105,6 +104,49 @@ def create_simple_net(input_shape, output_shape, config=None):
 #    t = Dropout(config.dropout)(t)
 
     outputs = Dense(output_shape, activation=config.fc_activation)(t)
+
+    model = Model(inputs, outputs)
+    model.compile(optimizer=config.optimizer, loss=config.loss, metrics=['accuracy'])
+
+    return model
+
+def VGG16_mod(input_shape, output_shape, config=None):
+    inputs = Input(input_shape)
+    t = inputs
+
+    # block1
+    t = Conv2D(64, 3, padding="same", activation="relu", name="block1_conv1")(t)
+    t = Conv2D(64, 3, padding="same", activation="relu", name="block1_conv2")(t)
+    t = MaxPooling2D((2,2), padding="same", name="block1_pool")(t)
+
+    # block2
+    t = Conv2D(128, 3, padding="same", activation="relu", name="block2_conv1")(t)
+    t = Conv2D(128, 3, padding="same", activation="relu", name="block2_conv2")(t)
+    t = MaxPooling2D((2,2), padding="same", name="block2_pool")(t)
+
+    # block3
+    t = Conv2D(256, 3, padding="same", activation="relu", name="block3_conv1")(t)
+    t = Conv2D(256, 3, padding="same", activation="relu", name="block3_conv2")(t)
+    t = Conv2D(256, 3, padding="same", activation="relu", name="block3_conv3")(t)
+    t = MaxPooling2D((2,2), padding="same", name="block3_pool")(t)
+
+    # block4
+    t = Conv2D(512, 3, padding="same", activation="relu", name="block4_conv1")(t)
+    t = Conv2D(512, 3, padding="same", activation="relu", name="block4_conv2")(t)
+    t = Conv2D(512, 3, padding="same", activation="relu", name="block4_conv3")(t)
+    t = MaxPooling2D((2,2), padding="same", name="block4_pool")(t)
+
+    # block5
+    t = Conv2D(512, 3, padding="same", activation="relu", name="block5_conv1")(t)
+    t = Conv2D(512, 3, padding="same", activation="relu", name="block5_conv2")(t)
+    t = Conv2D(512, 3, padding="same", activation="relu", name="block5_conv3")(t)
+    t = MaxPooling2D((2,2), padding="same", name="block5_pool")(t)
+
+    t = Flatten()(t)
+    t = Dense(1024, activation="relu", name="fc1")(t)
+    t = Dense(1024, activation="relu", name="fc2")(t)
+
+    outputs = Dense(output_shape, activation="relu", name="predictions")(t)
 
     model = Model(inputs, outputs)
     model.compile(optimizer=config.optimizer, loss=config.loss, metrics=['accuracy'])

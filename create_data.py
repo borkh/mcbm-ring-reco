@@ -50,10 +50,11 @@ class Display(np.ndarray):
             self[x,y] = 1
 
     def __get_indices(self, nof_rings):
-        self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
-        indices = np.where(self.flatten() == 1)[0] # get the indices of that area
+        # uncomment to restrict ellipses to center of the display (no extension over the edges)
+        #self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
+        #indices = np.where(self.flatten() == 1)[0] # get the indices of that area
         # uncomment to have no restrictions of ellipses centers
-        #indices = range(self.flatten().shape[0])
+        indices = range(self.flatten().shape[0])
         self[:,:] = 0
 
         return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
@@ -63,10 +64,12 @@ class Display(np.ndarray):
         indices = self.__get_indices(nof_rings)
         for n in range(nof_rings):
             nof_hits = rand.randint(24, 33)
-            X, y = make_circles(noise=.12, factor=.1, n_samples=(nof_hits, 0))
+            X, y = make_circles(noise=.1, factor=.1, n_samples=(nof_hits, 0))
             X = X[:nof_hits-12] # delete a few pairs to make data look closer to real data
 
-            r = get_radius_laplace() # define semi-major and semi-minor axes of ellipse (here: just radius for rings)
+            #r = get_radius_laplace() # define semi-major and semi-minor axes of ellipse (here: just radius for rings)
+            r = round(np.random.uniform(3,7), 2)
+
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
             X[:,0] *= major
@@ -98,9 +101,10 @@ def create_dataset(nofEvents):
     displays, pars = [], []
     for _ in range(nofEvents):
         nof_rings = choice(np.array([1,2,3]))#, p=[0.4, 0.3, 0.3])
+        noise = choice(np.array([1,2]))
 
         display = Display((72,32,1))
-        display.add_ellipses(choice([1,2,3]))
+        display.add_ellipses(nof_rings, noise)
 
         displays.append(display)
         pars.append(display.params)
@@ -123,13 +127,13 @@ if __name__ == "__main__":
         os.remove(test_dir + "y/" + test_y)
 
     print("Creating training data...")
-    for i in tqdm(range(100)):
-        displays, params = create_dataset(256)
+    for i in tqdm(range(5)):
+        displays, params = create_dataset(2048)
         np.savez_compressed(train_dir + "X/X{}.npz".format(i), displays)
         np.savez_compressed(train_dir + "y/y{}.npz".format(i), params)
 
     print("Creating testing data...")
-    for i in tqdm(range(100)):
-        displays, params = create_dataset(77)
+    for i in tqdm(range(5)):
+        displays, params = create_dataset(614)
         np.savez_compressed(test_dir + "X/X{}.npz".format(i), displays)
         np.savez_compressed(test_dir + "y/y{}.npz".format(i), params)

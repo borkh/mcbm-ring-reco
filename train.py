@@ -7,6 +7,7 @@ from sweep_configs import *
 from wandb.keras import WandbCallback
 from itertools import permutations, chain
 from tqdm import tqdm
+import datetime
 
 class CustomDataGen(tf.keras.utils.Sequence):
     def __init__(self, directory):
@@ -66,22 +67,23 @@ def flip_pars(model, disps, pars):
     return pars, np.sum(flipped[:])
 
 def train_with_flip(config=None):
-    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=100)
+    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=500)
     with wandb.init(config=sweep_config):
         global displays
         global params
         global model
         config = wandb.config
 
-#        model_path = "models/no_ee-CNN-mcbm.model"
-        model_path = "models/test_wo_flip-CNN-mcbm.model"
+        #model_path = "models/large_kernel-mcbm-2022-02-02_1406.model"
+        model_path = "models/plain-mcbm-{}.model".format(now)
 
-        print("Loading model {} and continuing training...\n".format(model_path))
-        model = tf.keras.models.load_model(model_path)
+        #print("Loading model {} and continuing training...\n".format(model_path))
+        #model = tf.keras.models.load_model(model_path)
 
-        #model = create_simple_net(displays[0].shape, params.shape[-1], config)
-        #model = create_plain_net(displays[0].shape, params.shape[-1], config)
-        #model.summary()
+        model = plain_net(displays[0].shape, params.shape[-1], config)
+        #model = simple_net(displays[0].shape, params.shape[-1], config)
+        #model = VGG16_mod(displays[0].shape, params.shape[-1], config)
+        model.summary()
 
         model.fit(datagen, steps_per_epoch=nof_files, epochs=config.epochs,
                   validation_data=testgen, callbacks=[WandbCallback(),
@@ -91,6 +93,7 @@ def train_with_flip(config=None):
 
 
 if __name__ == "__main__":
+    now = datetime.datetime.now().strftime("%Y-%m-%d_%H%M")
     ## ---------------------- load data --------------------------------
     train_dir = "./datasets/train/"
     test_dir = "./datasets/test/"
