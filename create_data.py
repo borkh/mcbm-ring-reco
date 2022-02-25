@@ -21,11 +21,6 @@ def rotate(img, angle=0):
     rotation_matrix = np.array([np.cos(angle), -np.sin(angle), np.sin(angle), np.cos(angle)]).reshape(2,2)
     return img @ rotation_matrix
 
-def get_radius_laplace(mu=5.0, sigma=0.3):
-    radii = laplace(mu, sigma, 10000)
-    radii[radii < 0] = 1
-    return round(choice(radii), 1)
-
 class Display(np.ndarray):
     def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
                 strides=None, order=None, info=None):
@@ -50,6 +45,7 @@ class Display(np.ndarray):
             self[x,y] = 1
 
     def __get_indices(self, nof_rings):
+        # uncomment to restrict ellipses to center of the display (no extension over the edges)
         self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
         indices = np.where(self.flatten() == 1)[0] # get the indices of that area
         # uncomment to have no restrictions of ellipses centers
@@ -58,15 +54,16 @@ class Display(np.ndarray):
 
         return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
 
-
     def add_ellipses(self, nof_rings, nof_noise_hits=None):
         indices = self.__get_indices(nof_rings)
         for n in range(nof_rings):
-            nof_hits = rand.randint(24, 33)
-            X, y = make_circles(noise=.12, factor=.1, n_samples=(nof_hits, 0))
-            X = X[:nof_hits-12] # delete a few pairs to make data look closer to real data
+            nof_hits = rand.randint(24, 38)
+            X, y = make_circles(noise=.1, factor=.1, n_samples=(nof_hits, 0))
+            X = X[:nof_hits-16] # delete a few pairs to make data look closer to real data
 
-            r = get_radius_laplace() # define semi-major and semi-minor axes of ellipse (here: just radius for rings)
+            #r = get_radius_laplace() # define semi-major and semi-minor axes of ellipse (here: just radius for rings)
+            r = round(np.random.uniform(3,8), 1)
+
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
             X[:,0] *= major
@@ -94,18 +91,6 @@ class Display(np.ndarray):
         if nof_noise_hits is not None:
             self.__add_noise(nof_noise_hits)
 
-def create_dataset(nofEvents):
-    displays, pars = [], []
-    for _ in range(nofEvents):
-        nof_rings = choice(np.array([1,2,3]))#, p=[0.4, 0.3, 0.3])
-
-        display = Display((72,32,1))
-        display.add_ellipses(choice([1,2,3]))
-
-        displays.append(display)
-        pars.append(display.params)
-    return np.array(displays), np.array(pars)
-
 
 if __name__ == "__main__":
     # training data
@@ -122,14 +107,23 @@ if __name__ == "__main__":
     for test_y in os.listdir(test_dir + "y/"):
         os.remove(test_dir + "y/" + test_y)
 
+    nof_files = 100000
     print("Creating training data...")
-    for i in tqdm(range(100)):
-        displays, params = create_dataset(256)
-        np.savez_compressed(train_dir + "X/X{}.npz".format(i), displays)
-        np.savez_compressed(train_dir + "y/y{}.npz".format(i), params)
+    for i in tqdm(range(nof_files)):
+        nof_rings = choice(np.array([1,2,3]))#, p=[0.4, 0.3, 0.3])
+        noise = choice(np.array([1,2,3]))
+        display = Display((72,32,1))
+        display.add_ellipses(nof_rings, noise)
+
+        np.savez_compressed(train_dir + "X/X{}.npz".format(i), display)
+        np.savez_compressed(train_dir + "y/y{}.npz".format(i), display.params)
 
     print("Creating testing data...")
-    for i in tqdm(range(100)):
-        displays, params = create_dataset(77)
-        np.savez_compressed(test_dir + "X/X{}.npz".format(i), displays)
-        np.savez_compressed(test_dir + "y/y{}.npz".format(i), params)
+    for i in tqdm(range(int(nof_files/3))):
+        nof_rings = choice(np.array([1,2,3]))#, p=[0.4, 0.3, 0.3])
+        noise = choice(np.array([1,2,3]))
+        display = Display((72,32,1))
+        display.add_ellipses(nof_rings, noise)
+
+        np.savez_compressed(test_dir + "X/X{}.npz".format(i), display)
+        np.savez_compressed(test_dir + "y/y{}.npz".format(i), display.params)
