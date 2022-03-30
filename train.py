@@ -8,105 +8,76 @@ from wandb.keras import WandbCallback
 from itertools import permutations, chain
 from tqdm import tqdm
 import datetime
+import ROOT
+import cv2
+from create_data import *
 
-class CustomDataGen(tf.keras.utils.Sequence):
-    def __init__(self, directory):
-        self.n = nof_files
-        self.directory = directory
-
-    def on_epoch_end(self):
-        pass
-        """
-        print("\nFlipping parameters in ", self.directory)
-        flipped_total = []
-        global model
-        for i in tqdm(range(self.n)):
-            nameX = self.directory + "X/X{}.npz".format(i)
-            namey = self.directory + "y/y{}.npz".format(i)
-
-            X = np.load(nameX, "r")['arr_0']
-            y = np.load(namey, "r")['arr_0']
-            pars, flipped = flip_pars(model, X, y)
-            flipped_total.append(flipped)
-            np.savez_compressed(namey, pars)
-        print("Flipped {} training samples of {} total samples ({} %)".format(np.sum(flipped_total),
-                                                                              self.n * y.shape[0],
-                                                                              100 * np.sum(flipped_total) / (self.n * y.shape[0])))
-        """
+class SynthGen(tf.keras.utils.Sequence):
+    def __init__(self, input_shape, output_shape, batch_size, steps_per_epoch):
+        self.ins = input_shape
+        self.os = output_shape
+        self.bs = batch_size
+        self.spe = steps_per_epoch
 
     def __getitem__(self, index):
-        X = np.load(self.directory + "X/X{}.npz".format(index), "r")['arr_0']
-        y = np.load(self.directory + "y/y{}.npz".format(index), "r")['arr_0']
-        return X, y
+        w, h, d = self.ins
+        X = np.zeros((self.bs, w, h, d))
+        Y = np.zeros((self.bs, self.os))
+        for i in range(self.bs):
+            x = Display(self.ins)
+            x.add_ellipses(choice([0,1,2,3]), choice([3,4,5]))
+            y = x.params
+            X[i] += x
+            Y[i] += y
+        return X, Y
 
     def __len__(self):
-        return self.n
+        return self.spe
 
-def flip_pars(model, disps, pars):
-    pred_pars = model.predict(disps)
-    flipped = np.zeros((len(pars)))
-
-    for i, (pred_rings, exp_rings) in enumerate(zip(pred_pars, pars)):
-        # create all possible permutations for the parameters
-        nested_exp_rings = [[exp_rings[i], exp_rings[i+1],
-                             exp_rings[i+2], exp_rings[i+3],
-                             exp_rings[i+4]] for i in range(0, len(exp_rings),
-                                                            5)]
-        perms = [list(chain(*i)) for i in list(permutations(nested_exp_rings))]
-
-        mse = np.mean(np.square(pred_rings - exp_rings))
-        mse_flipped = []
-        for flipped_exp_rings in perms:
-            mse_flipped.append(np.mean(np.square(pred_rings - flipped_exp_rings)))
-
-        min_mse, min_index = np.min(mse_flipped), np.argmin(mse_flipped)
-        if min_mse < mse:
-            pars[i] = perms[min_index]
-            flipped[i] = 1
-
-    return pars, np.sum(flipped[:])
-
-def train_with_flip(config=None):
-    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=500)
+def train(config=None):
+    now = datetime.datetime.now().strftime("%Y%m%d%H%M")
+    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
+                                          min_delta=0.001,
+                                          patience=500)
+    checkpoint_path = "models/checkpoints/{}".format(now)
+    mc = tf.keras.callbacks.ModelCheckpoint(checkpoint_path,
+                                            monitor="val_loss",
+                                            save_best_only=True)
     with wandb.init(config=sweep_config):
-        global displays
-        global params
-        global model
         config = wandb.config
+        ## ------------- define model / continue training ------------------
+        traingen = SynthGen(config.input_shape,
+                            config.output_shape,
+                            config.batch_size,
+                            config.spe)
+        testgen = SynthGen(config.input_shape,
+                            config.output_shape,
+                            config.batch_size,
+                            int(config.spe*0.4))
 
-        #model_path = "models/large_kernel-mcbm-2022-02-02_1406.model"
-        model_path = "models/plain-mcbm-{}.model".format(now)
+        #model_path = "models/plain-mcbm-2022-03-29_2214.model"
+        model_path = "models/{}.model".format(now)
 
         #print("Loading model {} and continuing training...\n".format(model_path))
         #model = tf.keras.models.load_model(model_path)
 
-        model = plain_net(displays[0].shape, params.shape[-1], config)
-        #model = simple_net(displays[0].shape, params.shape[-1], config)
-        #model = VGG16_mod(displays[0].shape, params.shape[-1], config)
+        model = plain_net(config.input_shape, config.output_shape, config)
         model.summary()
-
-        model.fit(datagen, steps_per_epoch=nof_files, epochs=config.epochs,
-                  validation_data=testgen, callbacks=[WandbCallback(),
-                                                      es])
-        print("Saving model {}...\n".format(model_path))
-        model.save(model_path)
-
+        model.fit(traingen,
+                  steps_per_epoch=config.spe,
+                  epochs=config.epochs,
+                  validation_data=testgen,
+                  validation_steps=int(config.spe*0.4),
+                  callbacks=[WandbCallback(), es, mc])
+#        print("Saving model {}...\n".format(model_path))
+#        model.save(model_path)
 
 if __name__ == "__main__":
-    now = datetime.datetime.now().strftime("%Y-%m-%d_%H%M")
-    ## ---------------------- load data --------------------------------
-    train_dir = "./datasets/train/"
-    test_dir = "./datasets/test/"
-    nof_files = len(os.listdir(train_dir + "y/"))
+    sweep_id = wandb.sweep(single_run_config, project='ring-finder')
+    wandb.agent(sweep_id, train, count=1)
 
-    displays = np.load(train_dir + "X/X0.npz", "r")['arr_0']
-    params = np.load(train_dir + "y/y0.npz", "r")['arr_0']
-
-    datagen = CustomDataGen(train_dir)
-    testgen = CustomDataGen(test_dir)
-
-#    sweep_id = wandb.sweep(sweep_config, project='ellipses-params-finder')
-    sweep_id = wandb.sweep(single_run_config, project='ellipses-params-finder')
-#    sweep_id = str("rhaas/ellipses-params-finder/4xlmkw8y")
-
-    wandb.agent(sweep_id, train_with_flip, count=1)
+#    traingen = SynthGen((72,32,1), 15, 32, 32)
+#    X, y = traingen.__getitem__(0)
+#    for i in range(5):
+#        plt.imshow(plot_single_event(X[i], y[i]))
+#        plt.show()

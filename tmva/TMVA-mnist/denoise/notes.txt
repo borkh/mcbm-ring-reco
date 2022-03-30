@@ -1,0 +1,7 @@
+gSystem->AddIncludePath(" -I/usr/local/cuda-11.4/targets/x86_64-linux/include");
+.L train_mb.C+
+train_mb();
+
+# in new root env
+gSystem->Load("train_mb_C.so");
+train_mb();
