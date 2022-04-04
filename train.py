@@ -24,7 +24,7 @@ def train(config=None):
         config = wandb.config
         traingen = SynthGen(config.input_shape,
                             config.output_shape,
-                            config.hits_per_ring,
+                            (config.min_hits_per_ring, config.max_hits_per_ring),
                             config.ring_noise,
                             config.batch_size,
                             config.spe)

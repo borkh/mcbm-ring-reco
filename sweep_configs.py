@@ -3,6 +3,7 @@ import wandb
 import math
 from pprint import pprint
 import random as rand
+import numpy as np
 
 sweep_config = dict(
     method="random",
@@ -61,7 +62,8 @@ single_run_config = dict(
                     # shapes
                     input_shape =           dict(value=(72,32,1)),
                     output_shape =          dict(value=15),
-                    hits_per_ring =         dict(value=range(24, 44)),
+                    min_hits_per_ring =     dict(value=24),
+                    max_hits_per_ring =     dict(value=33),
                     ring_noise =            dict(value=0.08)
     )
 )

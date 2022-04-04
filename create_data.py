@@ -22,12 +22,13 @@ def rotate(img, angle=0):
     return img @ rotation_matrix
 
 class SynthGen(tf.keras.utils.Sequence):
-    def __init__(self, input_shape, output_shape, hpr, rn, batch_size=32, steps_per_epoch=1000):
+    def __init__(self, input_shape, output_shape, hits_per_ring, rn, batch_size=32, steps_per_epoch=1000):
         self.ins = input_shape
         self.os = output_shape
         self.bs = batch_size
         self.spe = steps_per_epoch
-        self.hpr = hpr
+        self.minhits = hits_per_ring[0]
+        self.maxhits = hits_per_ring[1]
         self.rn = rn
 
     def __getitem__(self, index):
@@ -36,7 +37,8 @@ class SynthGen(tf.keras.utils.Sequence):
         for i in range(self.bs):
             x = Display(self.ins)
             x.add_ellipses(choice([0,1,2,3], p=[0.1,0.3,0.3,0.3]),
-                           choice(self.hpr), self.rn, choice([5,6,7]))
+                           (self.minhits, self.maxhits),
+                           self.rn, choice([5,6,7]))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -52,7 +54,8 @@ class SynthGen(tf.keras.utils.Sequence):
         for i in tqdm(range(size)):
             x = Display(self.ins)
             x.add_ellipses(choice([0,1,2,3], p=[0.1,0.3,0.3,0.3]),
-                           choice(self.hpr), self.rn, choice([5,6,7]))
+                           (self.minhits, self.maxhits),
+                           self.rn, choice([5,6,7]))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -91,11 +94,12 @@ class Display(np.ndarray):
 
         return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
 
-    def add_ellipses(self, nof_rings, hpr=30, rn=0, nof_noise_hits=None):
+    def add_ellipses(self, nof_rings, hpr, rn=0, nof_noise_hits=None):
         indices = self.__get_indices(nof_rings)
         for n in range(nof_rings):
-            X, y = make_circles(noise=rn, factor=.1, n_samples=(hpr, 0))
-            X = X[:hpr-12] # delete a few pairs to make data look closer to real data
+            hits = rand.randint(hpr[0], hpr[1])
+            X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
+            X = X[:hits-12] # delete a few pairs to make data look closer to real data
             r = round(np.random.uniform(2,8), 1)
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
@@ -129,7 +133,8 @@ class Display(np.ndarray):
             self.__add_noise(nof_noise_hits)
 
 def create_dataset(batch_size):
-    ins, os, hpr, rn = (72,32,1), 15, 30, 0.07
+    ins, os, minhits, maxhits, rn = (72,32,1), 15, 30, 40, 0.07
+    hpr = (minhits, maxhits)
     gen = SynthGen(ins, os, hpr, rn)
     X, y = gen.create_dataset(batch_size)
     return X, y
