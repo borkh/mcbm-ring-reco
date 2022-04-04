@@ -61,7 +61,7 @@ single_run_config = dict(
                     # shapes
                     input_shape =           dict(value=(72,32,1)),
                     output_shape =          dict(value=15),
-                    hits_per_ring =         dict(value=rand.randint(24, 44)),
+                    hits_per_ring =         dict(value=range(24, 44)),
                     ring_noise =            dict(value=0.08)
     )
 )

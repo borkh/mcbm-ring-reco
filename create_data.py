@@ -36,7 +36,7 @@ class SynthGen(tf.keras.utils.Sequence):
         for i in range(self.bs):
             x = Display(self.ins)
             x.add_ellipses(choice([0,1,2,3], p=[0.1,0.3,0.3,0.3]),
-                           self.hpr, self.rn, choice([5,6,7]))
+                           choice(self.hpr), self.rn, choice([5,6,7]))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -52,7 +52,7 @@ class SynthGen(tf.keras.utils.Sequence):
         for i in tqdm(range(size)):
             x = Display(self.ins)
             x.add_ellipses(choice([0,1,2,3], p=[0.1,0.3,0.3,0.3]),
-                           self.hpr, self.rn, choice([5,6,7]))
+                           choice(self.hpr), self.rn, choice([5,6,7]))
             y = x.params
             X[i] += x
             Y[i] += y
