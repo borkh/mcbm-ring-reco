@@ -61,18 +61,17 @@ def compare_true_and_predict(X_test, y_test, model, seed=42, show_true=True):
         plot = plot_single_event(X_test[m], y_pred[m])
         ax[n].imshow(plot)
 
-def show_predict(X_test, model, seed=0):
-    plt.rcParams['figure.figsize'] = [30, 10]
-    plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
-    N = 8
+def show_predict(X_test, model, M, N, seed=0):
+#    plt.rcParams['figure.figsize'] = [30, 10]
+#    plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
 
     rand.seed(seed)
-    indices = rand.sample(range(0, X_test.shape[0]), N)
+    indices = rand.sample(range(0, X_test.shape[0]), M*N)
 
     y_pred = model.predict(X_test)
 
-    fig, ax = plt.subplots(1,N)
-    for n, m in zip(range(N), indices):
+    fig, ax = plt.subplots(M,N)
+    for n, m in zip(product(range(M), range(N)), indices):
         plot = plot_single_event(X_test[m], y_pred[m])
         ax[n].imshow(plot)
 
@@ -90,16 +89,14 @@ def display_data(imgs, seed=42):
     plt.show()
 
 if __name__ == '__main__':
-    train_dir = "./datasets/train/"
-    test_dir = "./datasets/test/"
-    for i in range(4):
-        img = np.load(train_dir + "X/X{}.npz".format(0), "r")['arr_0'][i]
-        params = np.load(train_dir + "y/y{}.npz".format(0), "r")['arr_0'][i]
-        img = plot_single_event(img, params)
-        print(params)
-#
-        plt.imshow(img)
-        plt.show()
+    from create_data import *
+    ins, os, hpr, rn = (72,32,1), 15, rand.randint(24, 44), 0.08
+    gen = SynthGen(ins, os, hpr, rn)
+    X, y = gen.create_dataset(100)
+    model = tf.keras.models.load_model("models/bmsf.model")
+    show_predict(X, model, 2, 3, 0)
+    plt.show()
+
 
     #f = "datasets/mcbm.root"
     #imgs = np.array([get_data(f, i)[0] for i in range(100)])
