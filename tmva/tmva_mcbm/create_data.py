@@ -5,7 +5,7 @@ import random as rand
 from sklearn.datasets import make_circles
 from tqdm import tqdm
 import os
-from visual_functions import *
+import tensorflow as tf
 
 """
 Adrains PhD Thesis:
@@ -15,12 +15,51 @@ Adrains PhD Thesis:
         about 12-21 hits per ring
         radius: 2-7
 """
-
 def rotate(img, angle=0):
     # transorm angle from deg to rad
     angle *= np.pi / 180
     rotation_matrix = np.array([np.cos(angle), -np.sin(angle), np.sin(angle), np.cos(angle)]).reshape(2,2)
     return img @ rotation_matrix
+
+class SynthGen(tf.keras.utils.Sequence):
+    def __init__(self, input_shape, output_shape, hits_per_ring, rn, batch_size=32, steps_per_epoch=1000):
+        self.ins = input_shape
+        self.os = output_shape
+        self.bs = batch_size
+        self.spe = steps_per_epoch
+        self.minhits = hits_per_ring[0]
+        self.maxhits = hits_per_ring[1]
+        self.rn = rn
+
+    def __getitem__(self, index):
+        X = np.zeros((self.bs, self.ins[0], self.ins[1], self.ins[2]))
+        Y = np.zeros((self.bs, self.os))
+        for i in range(self.bs):
+            x = Display(self.ins)
+            x.add_ellipses(choice([0,1,2,3], p=[0.1,0.3,0.3,0.3]),
+                           (self.minhits, self.maxhits),
+                           self.rn, choice([5,6,7]))
+            y = x.params
+            X[i] += x
+            Y[i] += y
+        return X, Y
+
+    def __len__(self):
+        return self.spe
+
+    def create_dataset(self, size=1000):
+        X = np.zeros((size, self.ins[0], self.ins[1], self.ins[2]))
+        Y = np.zeros((size, self.os))
+        print("Creating dataset...")
+        for i in tqdm(range(size)):
+            x = Display(self.ins)
+            x.add_ellipses(choice([0,1,2,3], p=[0.1,0.3,0.3,0.3]),
+                           (self.minhits, self.maxhits),
+                           self.rn, choice([5,6,7]))
+            y = x.params
+            X[i] += x
+            Y[i] += y
+        return X, Y
 
 class Display(np.ndarray):
     def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
@@ -28,7 +67,7 @@ class Display(np.ndarray):
         obj = super().__new__(subtype, shape, dtype, buffer=np.zeros(shape),
                               offset=offset, strides=strides, order=order)
         obj.info = info
-        obj.ee = 3 # value that determines how much the ring can extend over the edge of the display
+        obj.ee = 2
         obj.minX, obj.maxX, obj.minY, obj.maxY = (obj.ee,
                                                   obj.shape[0] - obj.ee,
                                                   obj.ee,
@@ -47,31 +86,21 @@ class Display(np.ndarray):
 
     def __get_indices(self, nof_rings):
         # uncomment to restrict ellipses to center of the display (no extension over the edges)
-        #self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
-        #indices = np.where(self.flatten() == 1)[0] # get the indices of that area
+        self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
+        indices = np.where(self.flatten() == 1)[0] # get the indices of that area
         # uncomment to have no restrictions of ellipses centers
-        indices = range(self.flatten().shape[0])
+        #indices = range(self.flatten().shape[0])
         self[:,:] = 0
 
         return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
 
-
-    def add_ellipses(self, nof_rings, nof_noise_hits=None):
+    def add_ellipses(self, nof_rings, hpr, rn=0, nof_noise_hits=None):
         indices = self.__get_indices(nof_rings)
         for n in range(nof_rings):
-            nof_hits = rand.randint(24, 33)
-            X, y = make_circles(noise=.08, factor=.1, n_samples=(nof_hits, 0))
-            X = X[:nof_hits-12] # delete a few pairs to make data look closer to real data
-            #X = X[:int(nof_hits*0.7)] # delete a few pairs to make data look closer to real data
-
-            #X = list(X)
-            #X.sort(key=lambda x: x[0]+x[1])
-            #X = np.array(X)
-
-            #sb = rand.randint(0, int(nof_hits*0.4))
-            #s = slice(sb, sb + int(nof_hits*0.6))
-            #X = X[s] # delete a few pairs to make data look closer to real data
-            r = round(np.random.uniform(3,7), 2)
+            hits = rand.randint(hpr[0], hpr[1])
+            X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
+            X = X[:hits-12] # delete a few pairs to make data look closer to real data
+            r = round(np.random.uniform(2,8), 1)
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
             X[:,0] *= major
@@ -91,19 +120,11 @@ class Display(np.ndarray):
                     y >= 0 and y < self.shape[1]):
                     self[x,y] = 1
 
-            # uncomment to normalize parameters [0-1]
-            pars = [(xshift+0.5)/self.shape[0],
-                    (yshift+0.5)/self.shape[1],
-                    major/self.shape[0],
-                    minor/self.shape[1],
+            pars = [(xshift+0.5),
+                    (yshift+0.5),
+                    major,
+                    minor,
                     angle] # write parameters of each rings into self.params
-
-            # uncomment to write parameters directly
-#            pars = [(xshift+0.5),
-#                    (yshift+0.5),
-#                    major,
-#                    minor,
-#                    angle] # write parameters of each rings into self.params
 
             for i in range(5):
                 self.params[n*5 + i] = pars[i]
@@ -111,47 +132,19 @@ class Display(np.ndarray):
         if nof_noise_hits is not None:
             self.__add_noise(nof_noise_hits)
 
-def create_dataset(nofEvents):
-    displays, pars = [], []
-    for _ in range(nofEvents):
-        nof_rings = choice(np.array([1,2,3]))
-        noise = choice(np.array([2,3]))
-
-        display = Display((72,32,1))
-        display.add_ellipses(nof_rings, noise)
-        pars.append(display.params)
-
-#        display = img_preprocessing(display)
-#        display = cv2.blur(display, (5,5)).reshape(72,32,1)
-        displays.append(display)
-    return np.array(displays), np.array(pars)
-
+def create_dataset(batch_size):
+    ins, os, minhits, maxhits, rn = (72,32,1), 15, 30, 40, 0.07
+    hpr = (minhits, maxhits)
+    gen = SynthGen(ins, os, hpr, rn)
+    X, y = gen.create_dataset(batch_size)
+    return X, y
 
 if __name__ == "__main__":
-    # training data
-    train_dir = "./datasets/train/"
-    test_dir = "./datasets/test/"
-
-    for train_X in os.listdir(train_dir + "X/"):
-        os.remove(train_dir + "X/" + train_X)
-    for test_X in os.listdir(test_dir + "X/"):
-        os.remove(test_dir + "X/" + test_X)
-
-    for train_y in os.listdir(train_dir + "y/"):
-        os.remove(train_dir + "y/" + train_y)
-    for test_y in os.listdir(test_dir + "y/"):
-        os.remove(test_dir + "y/" + test_y)
-
-    nof_batches = 1000
-    batch_size = 2048
-    print("Creating training data...")
-    for i in tqdm(range(nof_batches)):
-        displays, params = create_dataset(batch_size)
-        np.savez_compressed(train_dir + "X/X{}.npz".format(i), displays)
-        np.savez_compressed(train_dir + "y/y{}.npz".format(i), params)
-
-    print("Creating testing data...")
-    for i in tqdm(range(nof_batches)):
-        displays, params = create_dataset(int(batch_size*0.45))
-        np.savez_compressed(test_dir + "X/X{}.npz".format(i), displays)
-        np.savez_compressed(test_dir + "y/y{}.npz".format(i), params)
+    X, y = create_dataset(100)
+    display_data(X)
+    plt.show()
+#    for i in range(3):
+#        X = Display((72,32,1))
+#        X.add_ellipses(choice([1,2,3]), 20, 0.08, choice([2,3]))
+#        plt.imshow(X)
+#        plt.show()

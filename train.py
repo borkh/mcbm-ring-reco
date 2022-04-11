@@ -2,24 +2,35 @@
 import os, datetime, cv2
 import tensorflow as tf
 import numpy as np
+import tensorflow.keras.backend as K
 from wandb.keras import WandbCallback
-from itertools import permutations, chain
-from tqdm import tqdm
 from create_data import *
 from model import *
 from sweep_configs import *
+import tensorflow_addons as tfa
+from tensorflow_addons.optimizers import CyclicalLearningRate
+from tensorflow.keras.optimizers import Adam, Adadelta, SGD
+from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
+
+class print_lr(tf.keras.callbacks.Callback):
+    def on_batch_end(self, batch, logs=None):
+        lr = self.model.optimizer.lr
+        lr = K.eval(lr)
 
 def train(config=None):
-    now = datetime.datetime.now().strftime("%Y%m%d%H%M")
-    name = "rlrop"
-    checkpoint_path = "models/checkpoints/{}-{}.model".format(name, now)
-    mc = tf.keras.callbacks.ModelCheckpoint(checkpoint_path,
+    #----------------------------------------------------------------------------
+    # define model name ---------------------------------------------------------
+    name, now = "CyclicalLearningRate", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    model_path = "models/checkpoints/{}-{}.model".format(name, now)
+    #load_path = "models/bmsf.model"
+    #----------------------------------------------------------------------------
+    # define callbacks ----------------------------------------------------------
+    es = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.01, patience=1000)
+    mc = tf.keras.callbacks.ModelCheckpoint(model_path,
                                             monitor="loss",
                                             save_best_only=True)
-    rlrop = tf.keras.callbacks.ReduceLROnPlateau(monitor="loss",
-                                                factor=0.85,
-                                                patience=1,
-                                                min_delta=0.01)
+    #----------------------------------------------------------------------------
+    # training ------------------------------------------------------------------
     with wandb.init(config=None):
         config = wandb.config
         traingen = SynthGen(config.input_shape,
@@ -28,29 +39,100 @@ def train(config=None):
                             config.ring_noise,
                             config.batch_size,
                             config.spe)
-
-#        X, y = traingen.__getitem__(0)
-#        display_data(X)
-#        for i in range(5):
-#            plt.imshow(plot_single_event(X[i], y[i]))
-#            plt.show()
-
-        #model_path = "models/rlrop-plain-202204031906.model"
-        model_path = "models/{}-{}.model".format(name, now)
-
-        #print("Loading model {} and continuing training...\n".format(model_path))
-        #model = tf.keras.models.load_model(model_path)
-
-        #model = plain_net(config.input_shape, config.output_shape, config)
-        model = deep_cnn(config.input_shape, config.output_shape, config)
-        model.summary()
+        # load model ------------------------------------------------------------
+        try:
+            print("Loading model {} and continuing training...\n".format(load_path))
+            model = tf.keras.models.load_model(load_path)
+            model.summary()
+        except NameError:
+            print("Creating model {} and starting training...\n".format(model_path))
+            model = plain_net(config.input_shape, config.output_shape, config)
+            #model = deep_cnn(config.input_shape, config.output_shape, config)
+        #------------------------------------------------------------------------
+        # compile model ---------------------------------------------------------
+        #lr = ExponentialDecay(config.learning_rate, config.decay_steps, config.decay)
+        #lr = CosineDecayRestarts(config.learning_rate, config.decay_steps, 1.0, config.decay, 0.0)
+        #lr = config.learning_rate
+        lr = CyclicalLearningRate(config.init_lr, config.max_lr, scale_fn=lambda x: 1/(2.**(x-1)), step_size=2*config.spe)
+        #opt= SGD(lr)
+        opt= Adam(lr)
+        model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
+        #------------------------------------------------------------------------
+        # fit model -------------------------------------------------------------
         model.fit(traingen,
                   steps_per_epoch=config.spe,
                   epochs=config.epochs,
-                  callbacks=[WandbCallback(), mc, rlrop])
+                  callbacks=[WandbCallback(), mc, es])
+        #------------------------------------------------------------------------
+        # recompile model -------------------------------------------------------
+        #lr = CosineDecayRestarts(0.0001, 2000, 2.0, 0.9, 0.0)
+        #model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
+        #------------------------------------------------------------------------
+        # fit model again -------------------------------------------------------
+        #model.fit(traingen,
+        #          steps_per_epoch=config.spe,
+        #          epochs=config.epochs,
+        #          callbacks=[WandbCallback(), mc, plr])
+
+
+def train_with_set(config=None):
+    now = datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name = "test"
+    checkpoint_path = "models/checkpoints/{}-{}.model".format(name, now)
+    mc = tf.keras.callbacks.ModelCheckpoint(checkpoint_path,
+                                            monitor="loss",
+                                            save_best_only=True)
+    with wandb.init(config=None):
+        config = wandb.config
+        gen = SynthGen(config.input_shape,
+                            config.output_shape,
+                            (config.min_hits_per_ring, config.max_hits_per_ring),
+                            config.ring_noise,
+                            config.batch_size,
+                            config.spe)
+
+        print("Training data...")
+        X_train, y_train = gen.create_dataset(300000)
+#        print("Testing data...")
+#        X_test, y_test = gen.create_dataset(30000)
+
+        model_path = "models/{}-{}.model".format(name, now)
+
+        model = deep_cnn(config.input_shape, config.output_shape, config)
+        model.summary()
+        model.fit(X_train, y_train,
+                  epochs=config.epochs,
+                  batch_size=config.batch_size,
+                  validation_split=0.2,
+                  callbacks=[WandbCallback(), mc])#, rlrop])
         print("Saving model {}...\n".format(model_path))
         model.save(model_path)
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(single_run_config, project='ring-finder')
     wandb.agent(sweep_id, train, count=1)
+
+    from keras_lr_finder import LRFinder
+    def debug():
+        ins, os, hpr, rn = (72,32,1), 15, (24, 33), 0.08
+        gen = SynthGen(ins, os, hpr, rn)
+
+        print("Training data...")
+        x_train, y_train = gen.create_dataset(10000)
+
+        x_test, y_test = gen.create_dataset(100)
+        model = plain_net_wo_conf(ins, os)
+
+        #lr = CyclicalLearningRate(config.init_lr, config.max_lr, scale_fn=lambda x: 1/(2.**(x-1)), step_size=3*config.spe)
+        lr = 0.001
+        opt= Adam(lr)
+        model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
+
+        lr_finder = LRFinder(model)
+        lr_finder.find(x_train, y_train, start_lr=1e-9, end_lr=1, batch_size=32, epochs=3)
+        lr_finder.plot_loss(n_skip_end=1)
+        plt.show()
+
+#        model.fit(x_train, y_train, epochs=10, batch_size=32,
+#                validation_split=0.2, callbacks=[])#, rlrop])
+#    debug()

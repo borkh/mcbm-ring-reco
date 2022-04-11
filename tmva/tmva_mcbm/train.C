@@ -16,12 +16,12 @@ void train(){
     TFile* output = TFile::Open("mcbm_pred.root", "RECREATE");
     TMVA::Factory* factory = new TMVA::Factory(
         "ring_reco", output,
-        "V:!Silent:Color:DrawProgressBar:!ROC:ModelPersistence:AnalysisType=Regression:Transformations=None:!Correlations:VerboseLevel=Debug"
+        "V:!Silent:Color:DrawProgressBar:!ROC:ModelPersistence:AnalysisType=Regression:Transformations=None:!Correlations:VerboseLevel=Verbose"
     );
 
     // load data
     TMVA::DataLoader* dataloader = new TMVA::DataLoader("dataset");
-    TFile* data = TFile::Open("mcbm_nonorm.root");
+    TFile* data = TFile::Open("datasets/test.root");
     dataloader->AddRegressionTree((TTree*)data->Get("train"), 1.0);     
 
     for(int i{} ; i < 72*32 ; i++){
@@ -35,13 +35,28 @@ void train(){
     dataloader->PrepareTrainingAndTestTree(TCut(""), "SplitMode=Random:NormMode=None:V:!Correlations:!CalcCorrelations");
 
     // define model & options
-    TString batchLayoutString = "BatchLayout=64|1|2304:";
+    TString batchLayoutString = "BatchLayout=32|1|2304:";
     TString inputLayoutString = "InputLayout=1|72|32:";
-    TString layoutString =
-    "Layout=CONV|8|3|3|1|1|1|1|RELU,MAXPOOL|2|2|1|1,CONV|16|3|3|1|1|1|1|RELU,CONV|32|3|3|1|1|1|1|RELU,MAXPOOL|2|2|1|1,MAXPOOL|2|2|1|1,RESHAPE|FLAT,DENSE|256|RELU,DENSE|15|RELU:";
-    TString trainingString = "TrainingStrategy=MaxEpochs=20,BatchSize=64,Optimizer=ADAM,LearningRate=1e-3:";
-    TString cnnOptions = "H:V:VarTransform=None:ErrorStrategy=SUMOFSQUARES:VerbosityLevel=Debug:Architecture=GPU";
-    TString options = batchLayoutString + inputLayoutString + layoutString + trainingString + cnnOptions;
+
+    // define model architecture
+//    TString l 	   = "Layout=";
+//    TString block1 = "CONV|16|3|3|1|1|1|1|RELU,CONV|16|3|3|1|1|1|1|RELU,MAXPOOL|2|2|1|1,";
+//    TString block2 = "CONV|32|3|3|1|1|1|1|RELU,CONV|32|3|3|1|1|1|1|RELU,MAXPOOL|2|2|1|1,";
+//    TString block3 = "CONV|64|3|3|1|1|1|1|RELU,CONV|64|3|3|1|1|1|1|RELU,MAXPOOL|2|2|1|1,";
+//    TString out    = "RESHAPE|FLAT,DENSE|256|RELU,DENSE|15|RELU:";
+
+    TString l 	   = "Layout=";
+    TString block1 = "CONV|8|3|3|1|1|1|1|RELU,MAXPOOL|2|2|1|1,";
+    //TString block2 = "CONV|16|3|3|1|1|1|1|RELU,MAXPOOL|2|2|1|1,";
+    //TString block3 = "CONV|32|3|3|1|1|1|1|RELU,MAXPOOL|2|2|1|1,";
+    TString out    = "RESHAPE|FLAT,DENSE|256|RELU,DENSE|15|RELU:";
+
+    TString lr_schedule = ":";
+
+    TString layoutString = l + block1 + out; // block2 + block3 + out;
+    TString trainingString = "TrainingStrategy=MaxEpochs=10,BatchSize=32,Optimizer=ADAM,LearningRate=1e-3:";
+    TString cnnOptions = "H:V:VarTransform=None:ErrorStrategy=SUMOFSQUARES:VerbosityLevel=Verbose:Architecture=GPU";
+    TString options = batchLayoutString + inputLayoutString + layoutString + trainingString + cnnOptions; //+ lr_schedule;
     // Book method
     factory->BookMethod(dataloader, TMVA::Types::kDL, "tmvaDL", options);
     TMVA::MethodDL* method = dynamic_cast<TMVA::MethodDL*>(factory->GetMethod(dataloader->GetName(), "tmvaDL"));

@@ -59,7 +59,7 @@ DeepNet_t* ReadModelFromXML(TString);
 void predict_lowlevel(){
 
     // load data
-    TString fileXML = "./dataset/weights/MNIST_tmvaDL.weights.xml";
+    TString fileXML = "./dataset/weights/ring_reco_tmvaDL.weights.xml";
     DeepNet_t* fNet = ReadModelFromXML(fileXML);
     Tensor_t input = TCpuTensor<Float_t>(1, 1, 28, 28);
     input.Zero();
