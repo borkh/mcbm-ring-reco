@@ -8,14 +8,9 @@ from create_data import *
 from model import *
 from sweep_configs import *
 import tensorflow_addons as tfa
-from tensorflow_addons.optimizers import CyclicalLearningRate
 from tensorflow.keras.optimizers import Adam, Adadelta, SGD
-from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
-
-class print_lr(tf.keras.callbacks.Callback):
-    def on_batch_end(self, batch, logs=None):
-        lr = self.model.optimizer.lr
-        lr = K.eval(lr)
+from tensorflow.keras.optimizers.schedules import *
+from tensorflow_addons.optimizers import *
 
 def train(config=None):
     #----------------------------------------------------------------------------
@@ -50,11 +45,10 @@ def train(config=None):
             #model = deep_cnn(config.input_shape, config.output_shape, config)
         #------------------------------------------------------------------------
         # compile model ---------------------------------------------------------
-        #lr = ExponentialDecay(config.learning_rate, config.decay_steps, config.decay)
-        #lr = CosineDecayRestarts(config.learning_rate, config.decay_steps, 1.0, config.decay, 0.0)
+        lr = CosineDecayRestarts(config.max_lr, config.epochs*config.spe, 1.0, config.decay, config.init_lr)
+        #lr = CosineDecayRestarts(config.max_lr, 4*config.spe, 1.0, config.decay, config.init_lr)
+        #lr = Triangular2CyclicalLearningRate(config.init_lr, config.max_lr, step_size=2*config.spe)
         #lr = config.learning_rate
-        lr = CyclicalLearningRate(config.init_lr, config.max_lr, scale_fn=lambda x: 1/(2.**(x-1)), step_size=2*config.spe)
-        #opt= SGD(lr)
         opt= Adam(lr)
         model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
         #------------------------------------------------------------------------
@@ -74,40 +68,6 @@ def train(config=None):
         #          epochs=config.epochs,
         #          callbacks=[WandbCallback(), mc, plr])
 
-
-def train_with_set(config=None):
-    now = datetime.datetime.now().strftime("%Y%m%d%H%M")
-    name = "test"
-    checkpoint_path = "models/checkpoints/{}-{}.model".format(name, now)
-    mc = tf.keras.callbacks.ModelCheckpoint(checkpoint_path,
-                                            monitor="loss",
-                                            save_best_only=True)
-    with wandb.init(config=None):
-        config = wandb.config
-        gen = SynthGen(config.input_shape,
-                            config.output_shape,
-                            (config.min_hits_per_ring, config.max_hits_per_ring),
-                            config.ring_noise,
-                            config.batch_size,
-                            config.spe)
-
-        print("Training data...")
-        X_train, y_train = gen.create_dataset(300000)
-#        print("Testing data...")
-#        X_test, y_test = gen.create_dataset(30000)
-
-        model_path = "models/{}-{}.model".format(name, now)
-
-        model = deep_cnn(config.input_shape, config.output_shape, config)
-        model.summary()
-        model.fit(X_train, y_train,
-                  epochs=config.epochs,
-                  batch_size=config.batch_size,
-                  validation_split=0.2,
-                  callbacks=[WandbCallback(), mc])#, rlrop])
-        print("Saving model {}...\n".format(model_path))
-        model.save(model_path)
-
 if __name__ == "__main__":
     sweep_id = wandb.sweep(single_run_config, project='ring-finder')
     wandb.agent(sweep_id, train, count=1)
@@ -118,7 +78,7 @@ if __name__ == "__main__":
         gen = SynthGen(ins, os, hpr, rn)
 
         print("Training data...")
-        x_train, y_train = gen.create_dataset(10000)
+        x_train, y_train = gen.create_dataset(160000)
 
         x_test, y_test = gen.create_dataset(100)
         model = plain_net_wo_conf(ins, os)

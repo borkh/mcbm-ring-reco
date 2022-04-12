@@ -17,15 +17,18 @@ def plain_net(input_shape, output_shape, config=None):
     for n in range(config.conv_layers):
         t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)),
                    config.conv_kernel_size, padding=config.padding,
-                   activation='relu', name="block{}_conv".format(n))(t)
-        t = MaxPooling2D(config.pool_size, padding=config.padding, name="block{}_pool".format(n))(t)
+                   activation='relu', name="block{}_conv0".format(n))(t)
+        t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)),
+                   config.conv_kernel_size, padding=config.padding,
+                   activation='relu', name="block{}_conv1".format(n))(t)
+        t = MaxPooling2D(config.pool_size, name="block{}_pool".format(n))(t)
         # might want to change padding for pooling layers to "valid"!!!
 
-    t = Dropout(config.dropout)(t)
+    #t = Dropout(config.dropout)(t)
     t = Flatten()(t)
     for n in range(config.fc_layers):
         t = Dense(config.fc_layer_size/(n+1), activation="relu", name="fc{}".format(n))(t)
-    t = Dropout(config.dropout)(t)
+    #t = Dropout(config.dropout)(t)
     outputs = Dense(output_shape, activation=config.fc_activation, name="predictions")(t)
 
     model = Model(inputs, outputs)
@@ -37,16 +40,18 @@ def plain_net_wo_conf(input_shape, output_shape):
     inputs = Input(input_shape)
     t = inputs
 
-    for n in range(4):
-        t = Conv2D(int(2 ** (np.log2(64) + n)), 3, padding="same",
-                activation='relu', name="block{}_conv".format(n))(t)
-        t = MaxPooling2D(2, name="block{}_pool".format(n))(t)
+    for n in range(3):
+        t = Conv2D(int(2 ** (np.log2(16) + n)), 3, padding="same",
+                activation='relu')(t)
+        t = Conv2D(int(2 ** (np.log2(16) + n)), 3, padding="same",
+                activation='relu')(t)
+        t = MaxPooling2D(2)(t)
 
-    t = Dropout(0.1)(t)
+    #t = Dropout(0.1)(t)
     t = Flatten()(t)
     for n in range(1):
-        t = Dense(512/(n+1), activation="relu", name="fc{}".format(n))(t)
-    t = Dropout(0.1)(t)
+        t = Dense(1024/(n+1), activation="relu", name="fc{}".format(n))(t)
+    #t = Dropout(0.1)(t)
     outputs = Dense(output_shape, activation="relu", name="predictions")(t)
 
     model = Model(inputs, outputs)

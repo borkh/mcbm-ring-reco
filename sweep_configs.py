@@ -48,16 +48,16 @@ single_run_config = dict(
                 goal='minimize'
     ),
     parameters=dict(loss =                  dict(value="mse"),
-                    learning_rate =         dict(value=0.0009),
+                    learning_rate =         dict(value=0.001),
                     dropout =               dict(value=0.1),
-                    epochs =                dict(value=1000),
+                    epochs =                dict(value=24),
                     batch_size =            dict(value=32),
-                    spe =                   dict(value=2000),
-                    decay_steps =           dict(value=20000),
-                    decay =                 dict(value=0.96),
+                    spe =                   dict(value=10000),
+                    #decay_steps =           dict(value=30000),
+                    decay =                 dict(value=0.5),
                     # conv2D parameters
-                    conv_layers =           dict(value=4),
-                    nof_initial_filters =   dict(value=64),
+                    conv_layers =           dict(value=3),
+                    nof_initial_filters =   dict(value=16),
                     conv_kernel_size =      dict(value=3),
                     padding =               dict(value="same"),
                     # max pooling parameters
@@ -65,7 +65,7 @@ single_run_config = dict(
                     pool_size =             dict(value=(2,2)),
                     # fully connected layer parameters
                     fc_layers =             dict(value=1),
-                    fc_layer_size =         dict(value=512),
+                    fc_layer_size =         dict(value=1024),
                     fc_activation =         dict(value="relu"),
                     # shapes
                     input_shape =           dict(value=(72,32,1)),
@@ -73,7 +73,7 @@ single_run_config = dict(
                     min_hits_per_ring =     dict(value=24),
                     max_hits_per_ring =     dict(value=33),
                     ring_noise =            dict(value=0.08),
-                    init_lr =               dict(value=1.3e-5),
-                    max_lr =                dict(value=0.005)
+                    init_lr =               dict(value=1e-6),
+                    max_lr =                dict(value=0.001)
     )
 )
