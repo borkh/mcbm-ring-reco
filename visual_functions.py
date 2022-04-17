@@ -10,11 +10,20 @@ from itertools import product
 import ROOT
 import pandas as pd
 
-def img_preprocessing(img):
-    img = cv2.resize(img, (128,128))#, interpolation=cv2.INTER_AREA)
-#    img = cv2.blur(img, (5,5))
-    img = cv2.merge((img,img,img))
-    return img
+def get_data(rootfile, index):
+    f = ROOT.TFile.Open(rootfile)
+    tree = f.Get("train")
+
+    tree.GetEntry(index)
+    return np.array([*tree.x]).reshape(72,32,1), np.array([*tree.y])
+
+def plot_root(path):
+    x = np.array([get_data(path, i)[0] for i in range(100)])
+    y = np.array([get_data(path, i)[1] for i in range(100)])
+    for i in range(3):
+        plt.imshow(plot_single_event(x[i], y[i]))
+        plt.show()
+    #display_data(x, 0)
 
 def plot_single_event(X, Y, scaling=5):
     X = cv2.resize(X, (X.shape[1]*scaling,
@@ -105,9 +114,7 @@ def loadDataFile(datafile, pixel_x = 32, pixel_y = 72):
     return hits
 
 if __name__ == '__main__':
-    # load data file and some preprocessing
     hits_true = loadDataFile("datasets/hits_true.txt")
-
 
     from create_data import *
     ins, os, hpr, rn = (72,32,1), 15, (24, 44), 0.08
@@ -116,13 +123,3 @@ if __name__ == '__main__':
     model = tf.keras.models.load_model("models/bmsf.model")
     show_predict(np.array(hits_true[:200]), model, 2, 3, 4)
     plt.show()
-
-
-    #f = "datasets/mcbm.root"
-    #imgs = np.array([get_data(f, i)[0] for i in range(100)])
-    #display_data(imgs, 0)
-
-    #x,y = get_data(f, 1)
-    #img = plot_single_event(x, y)
-    #plt.imshow(img)
-    #plt.show()

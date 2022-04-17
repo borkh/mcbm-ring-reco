@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
+import os
 import numpy as np
-from numpy.random import choice, laplace
 import random as rand
+import pickle as pkl
+from numpy.random import choice, laplace
 from sklearn.datasets import make_circles
 from tqdm import tqdm
-import os
 from visual_functions import *
 
 """
@@ -42,7 +43,7 @@ class SynthGen(tf.keras.utils.Sequence):
             y = x.params
             X[i] += x
             Y[i] += y
-        return X, Y
+        return np.array(X, Y)
 
     def __len__(self):
         return self.spe
@@ -132,19 +133,69 @@ class Display(np.ndarray):
         if nof_noise_hits is not None:
             self.__add_noise(nof_noise_hits)
 
-def create_dataset(batch_size):
-    ins, os, minhits, maxhits, rn = (72,32,1), 15, 30, 40, 0.07
+def create_tree(file_, x, y, name):
+    file_.cd()
+
+    # Setup tree and branches with arrays
+    tree = ROOT.TTree(name, name)
+    tree.SetAutoSave(0)
+    x_array = np.empty((72 * 32 * 1), dtype="float32")
+    x_branch = tree.Branch("x", x_array, "x[{}]/F".format(72 * 32 * 1))
+
+    y_array = np.empty((15), dtype="float32")
+    y_branch = tree.Branch("y", y_array, "y[{}]/F".format(15))
+
+    for x_, y_ in zip(x, y):
+        # Reshape x_ to flat array
+        x_ = x_.reshape(72 * 32 * 1)
+
+        # Copy inputs and outputs to correct addresses
+        x_array[:] = x_[:]
+        y_array[:] = y_[:]   #np.argmax(y_)
+
+        # Fill tree
+        tree.Fill()
+
+    tree.Write()
+
+def create_root_file(x_train, y_train, path):
+    # Convert dataset to ROOT file
+    file_ = ROOT.TFile(path, "RECREATE")
+    create_tree(file_, x_train, y_train, "train")
+    #file_.Write()
+    file_.Close()
+
+def create_datasets(size, path):
+    """
+    Create one dataset of size=size and save it two times in different
+    formats (pickle and root formats)
+    - pickle for tensorflow/keras training
+    - root for ROOT/TMVA training
+
+    path should be given as path to directory + filename without file extension
+    (e.g. path="data/name")
+    """
+    ins, os, minhits, maxhits, rn = (72,32,1), 15, 24, 33, 0.08
     hpr = (minhits, maxhits)
     gen = SynthGen(ins, os, hpr, rn)
-    X, y = gen.create_dataset(batch_size)
-    return X, y
+    x, y = gen.create_dataset(size)
+
+    with open(path + ".pkl", "wb") as f:
+        pkl.dump([x, y], f)
+
+    root_path = path + ".root"
+    create_root_file(x, y, root_path)
 
 if __name__ == "__main__":
-    X, y = create_dataset(100)
-    display_data(X)
-    plt.show()
-#    for i in range(3):
-#        X = Display((72,32,1))
-#        X.add_ellipses(choice([1,2,3]), 20, 0.08, choice([2,3]))
-#        plt.imshow(X)
-#        plt.show()
+    path = "data/80k"
+    create_datasets(80000, path)
+
+    # plot a few examples to check if the datasets were created and saved properly
+    with open(path + ".pkl", "rb") as f:
+        x, y = pkl.load(f)
+    for i in range(3):
+        plt.imshow(plot_single_event(x[i], y[i]))
+        plt.show()
+    plot_root(path + ".root")
+
+    ## TODO: switch from random to np.random

@@ -1,31 +1,25 @@
 #!/usr/bin/env python3
-import os, datetime, cv2
+import os, datetime, cv2, pickle
 import tensorflow as tf
 import numpy as np
-import tensorflow.keras.backend as K
 from wandb.keras import WandbCallback
 from create_data import *
 from model import *
 from sweep_configs import *
-import tensorflow_addons as tfa
 from tensorflow.keras.optimizers import Adam, Adadelta, SGD
-from tensorflow.keras.optimizers.schedules import *
-from tensorflow_addons.optimizers import *
+from tensorflow.keras.optimizers.schedules import CosineDecayRestarts
 
-def train(config=None):
-    #----------------------------------------------------------------------------
+def train_with_generator(config=None):
     # define model name ---------------------------------------------------------
-    name, now = "CyclicalLearningRate", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name, now = "PolyDecay", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
     #load_path = "models/bmsf.model"
-    #----------------------------------------------------------------------------
     # define callbacks ----------------------------------------------------------
-    es = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.01, patience=1000)
+    es = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0., patience=12, baseline=1.5)
     mc = tf.keras.callbacks.ModelCheckpoint(model_path,
                                             monitor="loss",
                                             save_best_only=True)
-    #----------------------------------------------------------------------------
-    # training ------------------------------------------------------------------
+    # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):
         config = wandb.config
         traingen = SynthGen(config.input_shape,
@@ -42,35 +36,45 @@ def train(config=None):
         except NameError:
             print("Creating model {} and starting training...\n".format(model_path))
             model = plain_net(config.input_shape, config.output_shape, config)
-            #model = deep_cnn(config.input_shape, config.output_shape, config)
-        #------------------------------------------------------------------------
         # compile model ---------------------------------------------------------
-        lr = CosineDecayRestarts(config.max_lr, config.epochs*config.spe, 1.0, config.decay, config.init_lr)
-        #lr = CosineDecayRestarts(config.max_lr, 4*config.spe, 1.0, config.decay, config.init_lr)
-        #lr = Triangular2CyclicalLearningRate(config.init_lr, config.max_lr, step_size=2*config.spe)
-        #lr = config.learning_rate
+        lr = CosineDecayRestarts(config.max_lr, 12*config.spe, 2.0, config.decay, config.init_lr)
         opt= Adam(lr)
         model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
-        #------------------------------------------------------------------------
         # fit model -------------------------------------------------------------
         model.fit(traingen,
                   steps_per_epoch=config.spe,
                   epochs=config.epochs,
-                  callbacks=[WandbCallback(), mc, es])
-        #------------------------------------------------------------------------
-        # recompile model -------------------------------------------------------
-        #lr = CosineDecayRestarts(0.0001, 2000, 2.0, 0.9, 0.0)
-        #model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
-        #------------------------------------------------------------------------
-        # fit model again -------------------------------------------------------
-        #model.fit(traingen,
-        #          steps_per_epoch=config.spe,
-        #          epochs=config.epochs,
-        #          callbacks=[WandbCallback(), mc, plr])
+                  callbacks=[WandbCallback(), mc])
+
+def train_with_dataset(config=None):
+    # define model name ---------------------------------------------------------
+    name, now = "80k", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    model_path = "models/checkpoints/{}-{}.model".format(name, now)
+    # define callbacks ----------------------------------------------------------
+    mc = tf.keras.callbacks.ModelCheckpoint(model_path,
+                                            monitor="loss",
+                                            save_best_only=True)
+    # initialize agent ----------------------------------------------------------
+    with wandb.init(config=None):
+        config = wandb.config
+        with open("data/80k.pkl", "rb") as f:
+            x_train, y_train = pkl.load(f)
+        # create model ------------------------------------------------------------
+        model = get_model(config.input_shape, config.output_shape, config)
+        # compile model ---------------------------------------------------------
+        vs = 0.2
+        spe = x_train.shape[0]*vs/config.batch_size
+        lr = CosineDecayRestarts(config.max_lr, 12*spe, 2.0, config.decay, config.init_lr)
+        opt= Adam(lr)
+        model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
+        # fit model -------------------------------------------------------------
+        model.fit(x_train, y_train, validation_split=vs,
+                  epochs=config.epochs, batch_size=config.batch_size,
+                  callbacks=[WandbCallback(), mc])
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(single_run_config, project='ring-finder')
-    wandb.agent(sweep_id, train, count=1)
+    wandb.agent(sweep_id, train_with_dataset, count=1000)
 
     from keras_lr_finder import LRFinder
     def debug():
@@ -83,7 +87,6 @@ if __name__ == "__main__":
         x_test, y_test = gen.create_dataset(100)
         model = plain_net_wo_conf(ins, os)
 
-        #lr = CyclicalLearningRate(config.init_lr, config.max_lr, scale_fn=lambda x: 1/(2.**(x-1)), step_size=3*config.spe)
         lr = 0.001
         opt= Adam(lr)
         model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
@@ -93,6 +96,11 @@ if __name__ == "__main__":
         lr_finder.plot_loss(n_skip_end=1)
         plt.show()
 
+    def test():
+        x_train = np.load("datasets/" + "x_train.npz", "r")['arr_0']
+        y_train = np.load("datasets/" + "y_train.npz", "r")['arr_0']
+
 #        model.fit(x_train, y_train, epochs=10, batch_size=32,
 #                validation_split=0.2, callbacks=[])#, rlrop])
 #    debug()
+#    test()
