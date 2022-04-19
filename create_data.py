@@ -161,8 +161,9 @@ def create_tree(file_, x, y, name):
 def create_root_file(x_train, y_train, path):
     # Convert dataset to ROOT file
     file_ = ROOT.TFile(path, "RECREATE")
+    print(x_train.shape, y_train.shape)
     create_tree(file_, x_train, y_train, "train")
-    #file_.Write()
+    file_.Write()
     file_.Close()
 
 def create_datasets(size, path):
@@ -187,8 +188,9 @@ def create_datasets(size, path):
     create_root_file(x, y, root_path)
 
 if __name__ == "__main__":
-    path = "data/80k"
-    create_datasets(80000, path)
+    size = 100000
+    path = "data/" + str(int(size/1000)) + "k"
+    create_datasets(size, path)
 
     # plot a few examples to check if the datasets were created and saved properly
     with open(path + ".pkl", "rb") as f:

@@ -2,13 +2,11 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import (Add, Conv2D, Conv2DTranspose,
-                                     Dropout, MaxPooling2D, UpSampling2D,
-                                     AveragePooling2D,
-                                     Flatten, Dense, Input)
-from tensorflow.keras.optimizers import Adam, Adadelta, SGD
+from tensorflow.keras.layers import (Input, Conv2D, MaxPooling2D, Flatten,
+                                     Dense, Dropout, BatchNormalization)
+from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
-from tensorflow.keras.initializers import Constant
+#from tensorflow.keras.initializers import Constant
 
 def get_model(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
@@ -16,29 +14,39 @@ def get_model(input_shape, output_shape, config=None):
     #t = BatchNormalization()(inputs)
 
     for n in range(config.conv_layers):
+        t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)), # double the number of filters in each subsequent layer
+                   config.conv_kernel_size,
+                   kernel_initializer="he_uniform",
+                   padding=config.padding,
+                   activation='relu',
+                   name="block{}_conv0".format(n))(t)
+        t = Dropout(config.conv_dropout)(t)
+
         t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)),
-                config.conv_kernel_size, kernel_initializer="he_uniform",
-                bias_initializer=Constant(0.001), padding=config.padding,
-                activation='relu', name="block{}_conv0".format(n))(t)
-        t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)),
-                config.conv_kernel_size, kernel_initializer="he_uniform",
-                bias_initializer=Constant(0.001), padding=config.padding,
-                activation='relu', name="block{}_conv1".format(n))(t)
+                   config.conv_kernel_size,
+                   kernel_initializer="he_uniform",
+                   padding=config.padding,
+                   activation='relu',
+                   name="block{}_conv1".format(n))(t)
+        t = Dropout(config.conv_dropout)(t)
+
         t = MaxPooling2D(config.pool_size, name="block{}_pool".format(n))(t)
 
-    t = Dropout(config.dropout)(t)
     t = Flatten()(t)
-    for n in range(config.fc_layers):
-        t = Dense(config.fc_layer_size/(n+1), kernel_initializer="he_uniform",
-                bias_initializer=Constant(0.001), activation="relu",
-                name="fc{}".format(n))(t)
-    t = Dropout(config.dropout)(t)
-    outputs = Dense(output_shape, kernel_initializer="he_uniform",
-            bias_initializer=Constant(0.001), activation=config.fc_activation,
-            name="predictions")(t)
+
+    t = Dropout(config.fc_dropout)(t)
+    t = Dense(config.fc_layer_size,
+              kernel_initializer="he_uniform",
+              activation="relu",
+              name="fc")(t)
+
+    t = Dropout(config.fc_dropout)(t)
+    outputs = Dense(output_shape,
+                    kernel_initializer="he_uniform",
+                    activation=config.fc_activation,
+                    name="predictions")(t)
 
     model = Model(inputs, outputs)
-
     model.summary()
     return model
 

@@ -37,7 +37,8 @@ def train_with_generator(config=None):
             print("Creating model {} and starting training...\n".format(model_path))
             model = plain_net(config.input_shape, config.output_shape, config)
         # compile model ---------------------------------------------------------
-        lr = CosineDecayRestarts(config.max_lr, 12*config.spe, 2.0, config.decay, config.init_lr)
+        #lr = CosineDecayRestarts(config.max_lr, 12*config.spe, 2.0, config.decay, config.init_lr)
+        lr = 0.001
         opt= Adam(lr)
         model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
         # fit model -------------------------------------------------------------
@@ -48,7 +49,7 @@ def train_with_generator(config=None):
 
 def train_with_dataset(config=None):
     # define model name ---------------------------------------------------------
-    name, now = "80k", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name, now = "400k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
     # define callbacks ----------------------------------------------------------
     mc = tf.keras.callbacks.ModelCheckpoint(model_path,
@@ -57,14 +58,14 @@ def train_with_dataset(config=None):
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):
         config = wandb.config
-        with open("data/80k.pkl", "rb") as f:
+        with open("data/400k.pkl", "rb") as f:
             x_train, y_train = pkl.load(f)
         # create model ------------------------------------------------------------
         model = get_model(config.input_shape, config.output_shape, config)
         # compile model ---------------------------------------------------------
         vs = 0.2
-        spe = x_train.shape[0]*vs/config.batch_size
-        lr = CosineDecayRestarts(config.max_lr, 12*spe, 2.0, config.decay, config.init_lr)
+        spe = x_train.shape[0]*(1-vs)/config.batch_size
+        lr = CosineDecayRestarts(config.max_lr, 40*spe, 1.0, config.lr_decay, config.init_lr)
         opt= Adam(lr)
         model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
         # fit model -------------------------------------------------------------
@@ -82,7 +83,7 @@ if __name__ == "__main__":
         gen = SynthGen(ins, os, hpr, rn)
 
         print("Training data...")
-        x_train, y_train = gen.create_dataset(160000)
+        x_train, y_train = gen.create_dataset(100000)
 
         x_test, y_test = gen.create_dataset(100)
         model = plain_net_wo_conf(ins, os)
