@@ -73,8 +73,8 @@ def train_with_dataset(config=None):
         # fit model -------------------------------------------------------------
         model.fit(x_train, y_train, validation_split=vs,
                   epochs=config.epochs, batch_size=config.batch_size,
-                  callbacks=[WandbCallback(), mc])
+                  callbacks=[WandbCallback(), mc, es])
 
 if __name__ == "__main__":
-    sweep_id = wandb.sweep(single_run_config, project='ring-finder')
+    sweep_id = wandb.sweep(sweep_config, project='ring-finder')
     wandb.agent(sweep_id, train_with_dataset, count=1000)
