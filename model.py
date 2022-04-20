@@ -6,7 +6,7 @@ from tensorflow.keras.layers import (Input, Conv2D, MaxPooling2D, Flatten,
                                      Dense, Dropout, BatchNormalization)
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
-#from tensorflow.keras.initializers import Constant
+from keras_lr_finder import LRFinder
 
 def get_model(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
@@ -40,7 +40,7 @@ def get_model(input_shape, output_shape, config=None):
               activation="relu",
               name="fc")(t)
 
-    t = Dropout(config.fc_dropout)(t)
+    t = Dropout(config.output_dropout)(t)
     outputs = Dense(output_shape,
                     kernel_initializer="he_uniform",
                     activation=config.fc_activation,
@@ -95,3 +95,26 @@ def get_model2(input_shape, output_shape, config=None):
 
     model.summary()
     return model
+
+def find_lr_range():
+    ins, os, hpr, rn = (72,32,1), 15, (24, 33), 0.08
+    gen = SynthGen(ins, os, hpr, rn)
+
+    print("Training data...")
+    x_train, y_train = gen.create_dataset(100000)
+
+    x_test, y_test = gen.create_dataset(100)
+    model = plain_net_wo_conf(ins, os)
+
+    lr = 0.001
+    opt= Adam(lr)
+    model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
+
+    lr_finder = LRFinder(model)
+    lr_finder.find(x_train, y_train, start_lr=1e-9, end_lr=1, batch_size=32, epochs=3)
+    lr_finder.plot_loss(n_skip_end=1)
+    plt.show()
+
+if __name__ == "__main__":
+    from create_data import *
+    find_lr_range()
