@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import (Input, Conv2D, MaxPooling2D, Flatten,
-                                     Dense, Dropout, BatchNormalization)
+                                     Dense, Dropout, BatchNormalization, GlobalAveragePooling2D)
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
 from keras_lr_finder import LRFinder
@@ -11,36 +11,48 @@ from keras_lr_finder import LRFinder
 def get_model(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
     t = inputs
-    #t = BatchNormalization()(inputs)
 
     for n in range(config.conv_layers):
         t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)), # double the number of filters in each subsequent layer
                    config.conv_kernel_size,
                    kernel_initializer="he_uniform",
-                   padding=config.padding,
-                   activation='relu',
-                   name="block{}_conv0".format(n))(t)
+                   padding="same",
+                   activation='relu')(t)
+        t = BatchNormalization()(t)
+        t = MaxPooling2D(config.pool_size, padding="same")(t)
         t = Dropout(config.conv_dropout)(t)
 
+    t = Flatten()(t)
+    t = Dense(config.fc_layer_size,
+              kernel_initializer="he_uniform",
+              activation="relu")(t)
+
+    t = BatchNormalization()(t)
+    t = Dropout(config.output_dropout)(t)
+    outputs = Dense(output_shape,
+                    kernel_initializer="he_uniform",
+                    activation=config.fc_activation, name="predictions")(t)
+
+    model = Model(inputs, outputs)
+    model.summary()
+    return model
+
+def get_GAP_model(input_shape, output_shape, config=None):
+    inputs = Input(input_shape)
+    t = inputs
+
+    for n in range(config.conv_layers):
         t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)),
                    config.conv_kernel_size,
                    kernel_initializer="he_uniform",
-                   padding=config.padding,
-                   activation='relu',
-                   name="block{}_conv1".format(n))(t)
-        t = Dropout(config.conv_dropout)(t)
+                   padding="same",
+                   activation='relu')(t)
+        t = BatchNormalization()(t)
+        t = MaxPooling2D(config.pool_size, padding="same")(t)
 
-        t = MaxPooling2D(config.pool_size, name="block{}_pool".format(n))(t)
+    t = GlobalAveragePooling2D()(t)
+    t = BatchNormalization()(t)
 
-    t = Flatten()(t)
-
-    t = Dropout(config.fc_dropout)(t)
-    t = Dense(config.fc_layer_size,
-              kernel_initializer="he_uniform",
-              activation="relu",
-              name="fc")(t)
-
-    t = Dropout(config.output_dropout)(t)
     outputs = Dense(output_shape,
                     kernel_initializer="he_uniform",
                     activation=config.fc_activation,
@@ -77,10 +89,10 @@ def get_model2(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
     x = Conv2D(16, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block1_conv1")(inputs)
     x = Conv2D(32, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block1_conv2")(x)
-    x = MaxPooling2D(2, name="block1_pool")(x)
+    x = MaxPooling2D(2, padding="same", name="block1_pool")(x)
     x = Conv2D(32, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block2_conv1")(x)
     x = Conv2D(64, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block2_conv2")(x)
-    x = MaxPooling2D(2, name="block2_pool")(x)
+    x = MaxPooling2D(2, padding="same", name="block2_pool")(x)
     x = Conv2D(64, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block3_conv1")(x)
     x = Conv2D(128, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block3_conv2")(x)
 
@@ -104,7 +116,7 @@ def find_lr_range():
     x_train, y_train = gen.create_dataset(100000)
 
     x_test, y_test = gen.create_dataset(100)
-    model = plain_net_wo_conf(ins, os)
+    model = get_model(ins, os)
 
     lr = 0.001
     opt= Adam(lr)

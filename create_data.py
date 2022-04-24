@@ -37,9 +37,7 @@ class SynthGen(tf.keras.utils.Sequence):
         Y = np.zeros((self.bs, self.os))
         for i in range(self.bs):
             x = Display(self.ins)
-            x.add_ellipses(choice([0,1,2,3], p=[0.1,0.3,0.3,0.3]),
-                           (self.minhits, self.maxhits),
-                           self.rn, choice([5,6,7]))
+            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice([5,6,7]))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -54,9 +52,7 @@ class SynthGen(tf.keras.utils.Sequence):
         print("Creating dataset...")
         for i in tqdm(range(size)):
             x = Display(self.ins)
-            x.add_ellipses(choice([0,1,2,3], p=[0.1,0.3,0.3,0.3]),
-                           (self.minhits, self.maxhits),
-                           self.rn, choice([5,6,7]))
+            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice([5,6,7]))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -68,7 +64,7 @@ class Display(np.ndarray):
         obj = super().__new__(subtype, shape, dtype, buffer=np.zeros(shape),
                               offset=offset, strides=strides, order=order)
         obj.info = info
-        obj.ee = 2
+        obj.ee = 7
         obj.minX, obj.maxX, obj.minY, obj.maxY = (obj.ee,
                                                   obj.shape[0] - obj.ee,
                                                   obj.ee,
@@ -188,7 +184,7 @@ def create_datasets(size, path):
     create_root_file(x, y, root_path)
 
 if __name__ == "__main__":
-    size = 100000
+    size = 200000
     path = "data/" + str(int(size/1000)) + "k"
     create_datasets(size, path)
 

@@ -14,29 +14,28 @@ single_run_config = dict(
                     # learning rate
                     max_lr =                dict(value=0.001),
                     init_lr =               dict(value=1e-6),
-                    lr_decay =              dict(value=0.8),
-                    decay_length =          dict(value=50),
+                    lr_decay =              dict(value=0.5),
+                    decay_length =          dict(value=100),
 
                     # regulization
                     conv_dropout =          dict(value=0.0),
-                    fc_dropout =            dict(value=0.0),
-                    output_dropout =        dict(value=0.0),
+                    fc_dropout =            dict(value=0.5),
+                    output_dropout =        dict(value=0.5),
 
                     # epochs
                     epochs =                dict(value=1000),
-                    batch_size =            dict(value=32),
+                    batch_size =            dict(value=256),
 
                     # conv2D parameters
-                    conv_layers =           dict(value=3),
-                    nof_initial_filters =   dict(value=16),
-                    conv_kernel_size =      dict(value=3),
-                    padding =               dict(value="same"),
+                    conv_layers =           dict(value=4),
+                    nof_initial_filters =   dict(value=32),
+                    conv_kernel_size =      dict(value=7),
 
                     # max pooling parameters
                     pool_size =             dict(value=(2,2)),
 
                     # fully connected layer parameters
-                    fc_layer_size =         dict(value=512),
+                    fc_layer_size =         dict(value=256),
                     fc_activation =         dict(value="relu"),
 
                     # shapes

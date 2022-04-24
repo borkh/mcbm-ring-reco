@@ -52,9 +52,9 @@ def train_with_dataset(config=None):
     name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
     # define callbacks ----------------------------------------------------------
-    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=30)
+    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=3000)
     mc = tf.keras.callbacks.ModelCheckpoint(model_path,
-                                            monitor="loss",
+                                            monitor="val_loss",
                                             save_best_only=True)
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):
@@ -64,10 +64,12 @@ def train_with_dataset(config=None):
             x_train, y_train = pkl.load(f)
         # create model ------------------------------------------------------------
         model = get_model(config.input_shape, config.output_shape, config)
+        #model = get_GAP_model(config.input_shape, config.output_shape, config)
         # compile model ---------------------------------------------------------
-        vs = 0.2
+        vs = 0.3
         spe = x_train.shape[0]*(1-vs)/config.batch_size # calculate steps per epoch
         lr = CosineDecayRestarts(config.max_lr, config.decay_length*spe, 1.0, config.lr_decay, config.init_lr)
+        #lr = 0.001
         opt= Adam(lr)
         model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
         # fit model -------------------------------------------------------------
@@ -76,5 +78,11 @@ def train_with_dataset(config=None):
                   callbacks=[WandbCallback(), mc, es])
 
 if __name__ == "__main__":
-    sweep_id = wandb.sweep(sweep_config, project='ring-finder')
-    wandb.agent(sweep_id, train_with_dataset, count=1000)
+    sweep_id = wandb.sweep(single_run_config, project='ring-finder')
+    wandb.agent(sweep_id, train_with_dataset, count=1)
+#    with open("data/200k.pkl", "rb") as f:
+#        x_train, y_train = pkl.load(f)
+#    for i in range(10):
+#        plt.imshow(plot_single_event(x_train[i], y_train[i]))
+#        print(y_train[i])
+#        plt.show()
