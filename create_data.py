@@ -37,7 +37,7 @@ class SynthGen(tf.keras.utils.Sequence):
         Y = np.zeros((self.bs, self.os))
         for i in range(self.bs):
             x = Display(self.ins)
-            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice([5,6,7]))
+            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice([2,3,4]))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -52,7 +52,7 @@ class SynthGen(tf.keras.utils.Sequence):
         print("Creating dataset...")
         for i in tqdm(range(size)):
             x = Display(self.ins)
-            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice([5,6,7]))
+            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice([2,3,4]))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -64,7 +64,7 @@ class Display(np.ndarray):
         obj = super().__new__(subtype, shape, dtype, buffer=np.zeros(shape),
                               offset=offset, strides=strides, order=order)
         obj.info = info
-        obj.ee = 7
+        obj.ee = 2
         obj.minX, obj.maxX, obj.minY, obj.maxY = (obj.ee,
                                                   obj.shape[0] - obj.ee,
                                                   obj.ee,
@@ -94,9 +94,10 @@ class Display(np.ndarray):
     def add_ellipses(self, nof_rings, hpr, rn=0, nof_noise_hits=None):
         indices = self.__get_indices(nof_rings)
         for n in range(nof_rings):
-            hits = rand.randint(hpr[0], hpr[1])
+            nod = 30 # number of hits that will be deleted
+            hits = rand.randint(hpr[0] + nod, hpr[1] + nod)
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
-            X = X[:hits-12] # delete a few pairs to make data look closer to real data
+            X = X[:hits-nod] # delete a few pairs to make data look closer to real data
             r = round(np.random.uniform(2,8), 1)
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
@@ -172,7 +173,7 @@ def create_datasets(size, path):
     path should be given as path to directory + filename without file extension
     (e.g. path="data/name")
     """
-    ins, os, minhits, maxhits, rn = (72,32,1), 15, 24, 33, 0.08
+    ins, os, minhits, maxhits, rn = (72,32,1), 15, 12, 21, 0.01
     hpr = (minhits, maxhits)
     gen = SynthGen(ins, os, hpr, rn)
     x, y = gen.create_dataset(size)
@@ -191,9 +192,11 @@ if __name__ == "__main__":
     # plot a few examples to check if the datasets were created and saved properly
     with open(path + ".pkl", "rb") as f:
         x, y = pkl.load(f)
-    for i in range(3):
-        plt.imshow(plot_single_event(x[i], y[i]))
-        plt.show()
-    plot_root(path + ".root")
+    events = np.array([plot_single_event(x[i], y[i]) for i in range(100)])
+    display_data(events)
+    #events = np.array([plot_single_event(x[i], np.zeros(15)) for i in range(100)])
+    #display_data(events)
+    #plot_root(path + ".root")
 
-    ## TODO: switch from random to np.random
+    # TODO: - switch from random to np.random
+    #       - remove hard coding of max ring scaling line 122-123

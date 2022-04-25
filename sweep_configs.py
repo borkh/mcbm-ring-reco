@@ -14,28 +14,28 @@ single_run_config = dict(
                     # learning rate
                     max_lr =                dict(value=0.001),
                     init_lr =               dict(value=1e-6),
-                    lr_decay =              dict(value=0.5),
-                    decay_length =          dict(value=100),
+                    lr_decay =              dict(value=0.8),
+                    decay_length =          dict(value=15),
 
                     # regulization
                     conv_dropout =          dict(value=0.0),
-                    fc_dropout =            dict(value=0.5),
-                    output_dropout =        dict(value=0.5),
+                    fc_dropout =            dict(value=0.0),
+                    output_dropout =        dict(value=0.0),
 
                     # epochs
                     epochs =                dict(value=1000),
-                    batch_size =            dict(value=256),
+                    batch_size =            dict(value=32),
 
                     # conv2D parameters
-                    conv_layers =           dict(value=4),
-                    nof_initial_filters =   dict(value=32),
-                    conv_kernel_size =      dict(value=7),
+                    conv_layers =           dict(value=3),
+                    nof_initial_filters =   dict(value=16),
+                    conv_kernel_size =      dict(value=3),
 
                     # max pooling parameters
                     pool_size =             dict(value=(2,2)),
 
                     # fully connected layer parameters
-                    fc_layer_size =         dict(value=256),
+                    fc_layer_size =         dict(value=1024),
                     fc_activation =         dict(value="relu"),
 
                     # shapes
@@ -43,8 +43,8 @@ single_run_config = dict(
                     output_shape =          dict(value=15),
 
                     # ring parameters
-                    min_hits_per_ring =     dict(value=24),
-                    max_hits_per_ring =     dict(value=33),
+                    min_hits_per_ring =     dict(value=12),
+                    max_hits_per_ring =     dict(value=21),
                     ring_noise =            dict(value=0.08),
     )
 )
@@ -88,9 +88,9 @@ sweep_config = dict(
                     output_shape =          dict(value=15),
 
                     # ring parameters
-                    min_hits_per_ring =     dict(value=24),
-                    max_hits_per_ring =     dict(value=33),
-                    ring_noise =            dict(value=0.08),
+                    min_hits_per_ring =     dict(value=12),
+                    max_hits_per_ring =     dict(value=21),
+                    ring_noise =            dict(value=0.03),
 
     )
 )

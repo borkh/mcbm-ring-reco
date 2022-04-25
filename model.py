@@ -17,10 +17,15 @@ def get_model(input_shape, output_shape, config=None):
                    config.conv_kernel_size,
                    kernel_initializer="he_uniform",
                    padding="same",
-                   activation='relu')(t)
+                   activation="relu")(t)
+        t = BatchNormalization()(t)
+        t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)), # double the number of filters in each subsequent layer
+                   config.conv_kernel_size,
+                   kernel_initializer="he_uniform",
+                   padding="same",
+                   activation="relu")(t)
         t = BatchNormalization()(t)
         t = MaxPooling2D(config.pool_size, padding="same")(t)
-        t = Dropout(config.conv_dropout)(t)
 
     t = Flatten()(t)
     t = Dense(config.fc_layer_size,
@@ -87,20 +92,26 @@ def get_model_no_config(input_shape, output_shape):
 
 def get_model2(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
-    x = Conv2D(16, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block1_conv1")(inputs)
-    x = Conv2D(32, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block1_conv2")(x)
-    x = MaxPooling2D(2, padding="same", name="block1_pool")(x)
-    x = Conv2D(32, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block2_conv1")(x)
-    x = Conv2D(64, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block2_conv2")(x)
-    x = MaxPooling2D(2, padding="same", name="block2_pool")(x)
-    x = Conv2D(64, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block3_conv1")(x)
-    x = Conv2D(128, 3, padding="same", kernel_initializer="he_uniform", bias_initializer=Constant(0.001), activation="relu", name="block3_conv2")(x)
+    x = Conv2D(8, 7, padding="same", kernel_initializer="he_uniform", activation="relu")(inputs)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D(2, padding="same")(x)
 
-    #x = Dropout(0.1)(x)
+    x = Conv2D(16, 5, padding="same", kernel_initializer="he_uniform", activation="relu")(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D(2, padding="same")(x)
+
+    x = Conv2D(32, 3, padding="same", kernel_initializer="he_uniform", activation="relu")(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D(2, padding="same")(x)
+
+    x = Conv2D(64, 3, padding="same", kernel_initializer="he_uniform", activation="relu")(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling2D(2, padding="same")(x)
+
     x = Flatten()(x)
-    x = Dense(1024, activation="relu", name="dense")(x)
+    x = Dense(256, activation="relu")(x)
+    x = BatchNormalization()(x)
 
-    #x = Dropout(0.1)(x)
     output = Dense(output_shape, activation="relu", name="predictions")(x)
 
     model = Model(inputs, output)
