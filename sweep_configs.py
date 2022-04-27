@@ -55,23 +55,23 @@ sweep_config = dict(
                     max_lr =                dict(value=0.05),
                     init_lr =               dict(value=1e-6),
                     lr_decay =              dict(value=0.8),
-                    decay_length =          dict(value=[2,3,4]),
+                    decay_length =          dict(values=[2,3,4]),
 
                     # regularization
                     fc_dropout =            dict(value=0.0),
                     output_dropout =        dict(value=0.0),
 
                     # epochs
-                    epochs =                dict(value=100),
-                    batch_size =            dict(value=[100,200,300]),
+                    epochs =                dict(value=24),
+                    batch_size =            dict(values=[100,200,300]),
 
                     # conv2D parameters
-                    conv_layers =           dict(value=[3,4,5]),
-                    nof_initial_filters =   dict(value=[16,32,64]),
-                    conv_kernel_size =      dict(value=[3,5]),
+                    conv_layers =           dict(values=[3,4,5]),
+                    nof_initial_filters =   dict(values=[16,32,64]),
+                    conv_kernel_size =      dict(values=[3,5]),
 
                     # fully connected layer parameters
-                    fc_layer_size =         dict(value=[64,128,256]),
+                    fc_layer_size =         dict(values=[64,128,256]),
                     fc_activation =         dict(value="relu"),
 
                     # shapes
