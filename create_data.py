@@ -37,7 +37,7 @@ class SynthGen(tf.keras.utils.Sequence):
         Y = np.zeros((self.bs, self.os))
         for i in range(self.bs):
             x = Display(self.ins)
-            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice([2,3,4]))
+            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(2,5)))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -52,7 +52,7 @@ class SynthGen(tf.keras.utils.Sequence):
         print("Creating dataset...")
         for i in tqdm(range(size)):
             x = Display(self.ins)
-            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice([2,3,4]))
+            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(2,5)))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -64,7 +64,7 @@ class Display(np.ndarray):
         obj = super().__new__(subtype, shape, dtype, buffer=np.zeros(shape),
                               offset=offset, strides=strides, order=order)
         obj.info = info
-        obj.ee = 2
+        obj.ee = 3
         obj.minX, obj.maxX, obj.minY, obj.maxY = (obj.ee,
                                                   obj.shape[0] - obj.ee,
                                                   obj.ee,
@@ -83,10 +83,10 @@ class Display(np.ndarray):
 
     def __get_indices(self, nof_rings):
         # uncomment to restrict ellipses to center of the display (no extension over the edges)
-        self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
-        indices = np.where(self.flatten() == 1)[0] # get the indices of that area
+        #self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
+        #indices = np.where(self.flatten() == 1)[0] # get the indices of that area
         # uncomment to have no restrictions of ellipses centers
-        #indices = range(self.flatten().shape[0])
+        indices = range(self.flatten().shape[0])
         self[:,:] = 0
 
         return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
@@ -97,8 +97,8 @@ class Display(np.ndarray):
             nod = 30 # number of hits that will be deleted
             hits = rand.randint(hpr[0] + nod, hpr[1] + nod)
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
-            X = X[:hits-nod] # delete a few pairs to make data look closer to real data
-            r = round(np.random.uniform(2,8), 1)
+            #X = X[:hits-nod] # delete a few pairs to make data look closer to real data
+            r = round(np.random.uniform(2.0,6.0), 1)
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
             X[:,0] *= major
@@ -110,6 +110,10 @@ class Display(np.ndarray):
             X = np.round(X, 0).astype('int32') # convert all entries to integers
 
             yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
+            if xshift in range(self.minX, self.maxX - 1) and yshift in range(self.minY, self.maxY - 1):
+                X = X[:hits-nod] # delete a few pairs to make data look closer to real data
+            else:
+                X = X[:hits-int(nod/2)] # delete less pairs for rings at the edges of the display
             X[:,0] += xshift
             X[:,1] += yshift
 
@@ -173,7 +177,7 @@ def create_datasets(size, path):
     path should be given as path to directory + filename without file extension
     (e.g. path="data/name")
     """
-    ins, os, minhits, maxhits, rn = (72,32,1), 15, 12, 21, 0.01
+    ins, os, minhits, maxhits, rn = (72,32,1), 15, 10, 18, 0.01
     hpr = (minhits, maxhits)
     gen = SynthGen(ins, os, hpr, rn)
     x, y = gen.create_dataset(size)
@@ -185,15 +189,25 @@ def create_datasets(size, path):
     create_root_file(x, y, root_path)
 
 if __name__ == "__main__":
-    size = 200000
+    size = 50000
     path = "data/" + str(int(size/1000)) + "k"
     create_datasets(size, path)
 
     # plot a few examples to check if the datasets were created and saved properly
     with open(path + ".pkl", "rb") as f:
         x, y = pkl.load(f)
-    events = np.array([plot_single_event(x[i], y[i]) for i in range(100)])
-    display_data(events)
+    #events = np.array([plot_single_event(x[i], y[i]) for i in range(1000)])
+    #for i in range(5):
+    #    display_data(events, i)
+
+    def show(M, N, indices=np.arange(100)):
+        fig, ax = plt.subplots(M,N)
+        for n, m in zip(product(range(M), range(N)), indices):
+            plot = plot_single_event(x[m], y[m])
+            ax[n].imshow(plot)
+        plt.show()
+    show(5,8)
+
     #events = np.array([plot_single_event(x[i], np.zeros(15)) for i in range(100)])
     #display_data(events)
     #plot_root(path + ".root")

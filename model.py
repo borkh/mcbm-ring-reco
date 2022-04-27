@@ -7,8 +7,11 @@ from tensorflow.keras.layers import (Input, Conv2D, MaxPooling2D, Flatten,
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
 from keras_lr_finder import LRFinder
+from tensorflow.keras.regularizers import l1, l2
 
 def get_model(input_shape, output_shape, config=None):
+    reg = l2(0.001)
+
     inputs = Input(input_shape)
     t = inputs
 
@@ -25,18 +28,15 @@ def get_model(input_shape, output_shape, config=None):
                    padding="same",
                    activation="relu")(t)
         t = BatchNormalization()(t)
-        t = MaxPooling2D(config.pool_size, padding="same")(t)
+        t = MaxPooling2D((2,2), padding="same")(t)
 
     t = Flatten()(t)
-    t = Dense(config.fc_layer_size,
-              kernel_initializer="he_uniform",
-              activation="relu")(t)
-
     t = BatchNormalization()(t)
-    t = Dropout(config.output_dropout)(t)
+    t = Dense(config.fc_layer_size, kernel_initializer="he_uniform", activation="relu")(t)
+    t = BatchNormalization()(t)
     outputs = Dense(output_shape,
                     kernel_initializer="he_uniform",
-                    activation=config.fc_activation, name="predictions")(t)
+                    activation="relu", name="predictions")(t)
 
     model = Model(inputs, outputs)
     model.summary()

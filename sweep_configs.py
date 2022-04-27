@@ -12,30 +12,26 @@ single_run_config = dict(
     ),
     parameters=dict(loss =                  dict(value="mse"),
                     # learning rate
-                    max_lr =                dict(value=0.001),
+                    max_lr =                dict(value=0.05),
                     init_lr =               dict(value=1e-6),
                     lr_decay =              dict(value=0.8),
-                    decay_length =          dict(value=15),
+                    decay_length =          dict(value=3),
 
-                    # regulization
-                    conv_dropout =          dict(value=0.0),
+                    # regularization
                     fc_dropout =            dict(value=0.0),
                     output_dropout =        dict(value=0.0),
 
                     # epochs
-                    epochs =                dict(value=1000),
-                    batch_size =            dict(value=32),
+                    epochs =                dict(value=100),
+                    batch_size =            dict(value=200),
 
                     # conv2D parameters
-                    conv_layers =           dict(value=3),
-                    nof_initial_filters =   dict(value=16),
+                    conv_layers =           dict(value=4),
+                    nof_initial_filters =   dict(value=64),
                     conv_kernel_size =      dict(value=3),
 
-                    # max pooling parameters
-                    pool_size =             dict(value=(2,2)),
-
                     # fully connected layer parameters
-                    fc_layer_size =         dict(value=1024),
+                    fc_layer_size =         dict(value=64),
                     fc_activation =         dict(value="relu"),
 
                     # shapes
@@ -45,7 +41,7 @@ single_run_config = dict(
                     # ring parameters
                     min_hits_per_ring =     dict(value=12),
                     max_hits_per_ring =     dict(value=21),
-                    ring_noise =            dict(value=0.08),
+                    ring_noise =            dict(value=0.08)
     )
 )
 
@@ -56,31 +52,26 @@ sweep_config = dict(
     ),
     parameters=dict(loss =                  dict(value="mse"),
                     # learning rate
-                    max_lr =                dict(value=0.001),
+                    max_lr =                dict(value=0.05),
                     init_lr =               dict(value=1e-6),
                     lr_decay =              dict(value=0.8),
-                    decay_length =          dict(value=50),
+                    decay_length =          dict(value=[2,3,4]),
 
-                    # regulization
-                    conv_dropout =          dict(values=[0.0, 0.1, 0.2, 0.3]),
-                    fc_dropout =            dict(values=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5]),
-                    output_dropout =        dict(values=[0.0, 0.1, 0.2, 0.3, 0.4]),
+                    # regularization
+                    fc_dropout =            dict(value=0.0),
+                    output_dropout =        dict(value=0.0),
 
                     # epochs
-                    epochs =                dict(value=1000),
-                    batch_size =            dict(value=32),
+                    epochs =                dict(value=100),
+                    batch_size =            dict(value=[100,200,300]),
 
                     # conv2D parameters
-                    conv_layers =           dict(value=3),
-                    nof_initial_filters =   dict(value=16),
-                    conv_kernel_size =      dict(value=3),
-                    padding =               dict(value="same"),
-
-                    # max pooling parameters
-                    pool_size =             dict(value=(2,2)),
+                    conv_layers =           dict(value=[3,4,5]),
+                    nof_initial_filters =   dict(value=[16,32,64]),
+                    conv_kernel_size =      dict(value=[3,5]),
 
                     # fully connected layer parameters
-                    fc_layer_size =         dict(value=1024),
+                    fc_layer_size =         dict(value=[64,128,256]),
                     fc_activation =         dict(value="relu"),
 
                     # shapes
@@ -90,7 +81,6 @@ sweep_config = dict(
                     # ring parameters
                     min_hits_per_ring =     dict(value=12),
                     max_hits_per_ring =     dict(value=21),
-                    ring_noise =            dict(value=0.03),
-
+                    ring_noise =            dict(value=0.08)
     )
 )
