@@ -4,7 +4,7 @@ import numpy as np
 import random as rand
 import pickle as pkl
 from numpy.random import choice, laplace
-from sklearn.datasets import make_circles
+from sklearn.datasets import make_circles, make_moons
 from tqdm import tqdm
 from visual_functions import *
 
@@ -70,6 +70,7 @@ class Display(np.ndarray):
                                                   obj.ee,
                                                   obj.shape[1] - obj.ee)
         obj.params = np.zeros(15)
+        obj.positions = np.array([(x, y) for x in range(obj.shape[0]) for y in range(obj.shape[1])])
         return obj
 
     def __array_finalize__(self, obj):
@@ -88,17 +89,15 @@ class Display(np.ndarray):
         # uncomment to have no restrictions of ellipses centers
         indices = range(self.flatten().shape[0])
         self[:,:] = 0
-
         return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
 
     def add_ellipses(self, nof_rings, hpr, rn=0, nof_noise_hits=None):
         indices = self.__get_indices(nof_rings)
         for n in range(nof_rings):
+            yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
             nod = 30 # number of hits that will be deleted
-            hits = rand.randint(hpr[0] + nod, hpr[1] + nod)
+            hits, r = rand.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(2.0,6.0), 1)
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
-            #X = X[:hits-nod] # delete a few pairs to make data look closer to real data
-            r = round(np.random.uniform(2.0,6.0), 1)
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
             X[:,0] *= major
@@ -110,14 +109,16 @@ class Display(np.ndarray):
             X = np.round(X, 0).astype('int32') # convert all entries to integers
 
             yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
-            if xshift in range(self.minX, self.maxX - 1) and yshift in range(self.minY, self.maxY - 1):
-                X = X[:hits-nod] # delete a few pairs to make data look closer to real data
-            else:
-                X = X[:hits-int(nod/2)] # delete less pairs for rings at the edges of the display
             X[:,0] += xshift
             X[:,1] += yshift
 
-            for x, y in zip(X[:,0], X[:,1]): # set the values of the positions of the circles in the display image to 1
+            # take only points that are in the display range in order to avoid having the majority of points outside
+            # the array range and therefore fitting rings with only 2 or 3 points
+            X = np.array([x for x in set(tuple(x) for x in X) & set(tuple(x) for x in self.positions)])
+
+            X = X[:hits-nod] # delete a few pairs to have irregular distances between ring points
+
+            for x, y in zip(X[:,0], X[:,1]): # set the values of the positions of the ring points in the display image to 1
                 if (x >= 0 and x < self.shape[0] and
                     y >= 0 and y < self.shape[1]):
                     self[x,y] = 1
@@ -189,7 +190,7 @@ def create_datasets(size, path):
     create_root_file(x, y, root_path)
 
 if __name__ == "__main__":
-    size = 50000
+    size = 200000
     path = "data/" + str(int(size/1000)) + "k"
     create_datasets(size, path)
 
@@ -200,13 +201,16 @@ if __name__ == "__main__":
     #for i in range(5):
     #    display_data(events, i)
 
-    def show(M, N, indices=np.arange(100)):
+    def show(M, N, indices=np.arange(1000)):
         fig, ax = plt.subplots(M,N)
         for n, m in zip(product(range(M), range(N)), indices):
             plot = plot_single_event(x[m], y[m])
             ax[n].imshow(plot)
         plt.show()
-    show(5,8)
+    show(3,4, indices=np.arange(1000)[:100])
+    show(3,4, indices=np.arange(1000)[100:200])
+    #show(4,8, indices=np.arange(1000)[200:300])
+    #show(4,8, indices=np.arange(1000)[300:400])
 
     #events = np.array([plot_single_event(x[i], np.zeros(15)) for i in range(100)])
     #display_data(events)

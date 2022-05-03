@@ -71,18 +71,19 @@ def get_model_no_config(input_shape, output_shape):
     inputs = Input(input_shape)
     t = inputs
 
-    for n in range(3):
-        t = Conv2D(int(2 ** (np.log2(32) + n)), 3, padding="same",
+    for n in range(4):
+        t = Conv2D(int(2 ** (np.log2(64) + n)), 3, padding="same",
                 activation='relu')(t)
-        t = Conv2D(int(2 ** (np.log2(32) + n)), 3, padding="same",
+        t = BatchNormalization()(t)
+        t = Conv2D(int(2 ** (np.log2(64) + n)), 3, padding="same",
                 activation='relu')(t)
-        t = MaxPooling2D(2)(t)
+        t = BatchNormalization()(t)
+        t = MaxPooling2D(2, padding="same")(t)
 
-    #t = Dropout(0.1)(t)
     t = Flatten()(t)
-    for n in range(1):
-        t = Dense(1024/(n+1), activation="relu", name="fc{}".format(n))(t)
-    #t = Dropout(0.1)(t)
+    t = BatchNormalization()(t)
+    t = Dense(64, activation="relu", name="fc{}".format(n))(t)
+    t = BatchNormalization()(t)
     outputs = Dense(output_shape, activation="relu", name="predictions")(t)
 
     model = Model(inputs, outputs)
@@ -121,20 +122,16 @@ def get_model2(input_shape, output_shape, config=None):
 
 def find_lr_range():
     ins, os, hpr, rn = (72,32,1), 15, (24, 33), 0.08
-    gen = SynthGen(ins, os, hpr, rn)
+    with open("data/200k.pkl", "rb") as f:
+        x_train, y_train = pkl.load(f)
+    model = get_model_no_config(ins, os)
 
-    print("Training data...")
-    x_train, y_train = gen.create_dataset(100000)
-
-    x_test, y_test = gen.create_dataset(100)
-    model = get_model(ins, os)
-
-    lr = 0.001
-    opt= Adam(lr)
+    lr = 0.05
+    opt= SGD(lr)
     model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
 
     lr_finder = LRFinder(model)
-    lr_finder.find(x_train, y_train, start_lr=1e-9, end_lr=1, batch_size=32, epochs=3)
+    lr_finder.find(x_train, y_train, start_lr=1e-7, end_lr=1, batch_size=256, epochs=3)
     lr_finder.plot_loss(n_skip_end=1)
     plt.show()
 

@@ -13,7 +13,7 @@ from tensorflow_addons.optimizers import Triangular2CyclicalLearningRate
 import multiprocessing
 
 def train_with_dataset(config=None):
-    #multiprocessing.Queue(1000)
+    multiprocessing.Queue(1000)
     # define model name ---------------------------------------------------------
     name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
@@ -35,9 +35,8 @@ def train_with_dataset(config=None):
         #model = tf.keras.models.load_model("models/checkpoints/200k-202204252345.model")
         #model = get_GAP_model(config.input_shape, config.output_shape, config)
         # compile model ---------------------------------------------------------
-        vs = 0.3
+        vs = 0.2
         spe = x_train.shape[0]*(1-vs)/config.batch_size # calculate steps per epoch
-        #lr = CosineDecayRestarts(config.max_lr, config.decay_length*spe, 1.0, config.lr_decay, config.init_lr)
         lr = Triangular2CyclicalLearningRate(config.init_lr, config.max_lr, config.decay_length*spe)
         #lr = 0.001
         opt = SGD(lr, momentum=0.9)
@@ -48,5 +47,6 @@ def train_with_dataset(config=None):
                   callbacks=[WandbCallback(), mc, es])
 
 if __name__ == "__main__":
-    sweep_id = wandb.sweep(sweep_config, project='ring-finder')
-    wandb.agent(sweep_id, train_with_dataset, count=1000)
+    sweep_id = wandb.sweep(single_run_config, project='ring-finder')
+    #sweep_id = str("rhaas/ring-finder/183782b7")
+    wandb.agent(sweep_id, train_with_dataset, count=1)

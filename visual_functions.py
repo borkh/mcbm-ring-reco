@@ -114,6 +114,24 @@ def loadDataFile(datafile, pixel_x = 32, pixel_y = 72):
     return hits
 
 if __name__ == '__main__':
+    from tensorflow_addons.optimizers import *
+    epochs = 24
+    spe = 5000
+    ep = np.arange(0, epochs)
+    lr = []
+    m = Triangular2CyclicalLearningRate(1e-6, 0.05, 4*spe)
+
+    for e in range(epochs):
+        steps = np.arange(e*spe, (e+1)*spe)
+        lr.append(np.mean(m(steps)))
+    steps = np.arange(0, epochs*spe)
+    plt.plot(steps/spe, m(steps))
+    plt.ylabel("learning rate")
+    plt.xlabel("epochs")
+    plt.show()
+
+    pass
+"""
     hits_true = loadDataFile("datasets/hits_true.txt")
 
     from create_data import *
@@ -123,3 +141,4 @@ if __name__ == '__main__':
     model = tf.keras.models.load_model("models/bmsf.model")
     show_predict(np.array(hits_true[:200]), model, 2, 3, 4)
     plt.show()
+"""
