@@ -114,7 +114,19 @@ def loadDataFile(datafile, pixel_x = 32, pixel_y = 72):
     return hits
 
 if __name__ == '__main__':
+    path = "data/runx.rec.root"
+    plot_root(path)
+
+
+"""
     from tensorflow_addons.optimizers import *
+    import matplotlib
+    font = {'family' : 'normal',
+            'size'   : 50}
+    matplotlib.rc('font', **font)
+    matplotlib.rcParams['lines.linewidth'] = 4
+    matplotlib.rcParams['axes.linewidth'] = 0
+
     epochs = 24
     spe = 5000
     ep = np.arange(0, epochs)
@@ -127,10 +139,11 @@ if __name__ == '__main__':
     steps = np.arange(0, epochs*spe)
     plt.plot(steps/spe, m(steps))
     plt.ylabel("learning rate")
-    plt.xlabel("epochs")
+    plt.xlabel("epoch")
+    plt.subplots_adjust(left=0.11, bottom=0.13, right=0.98, top=0.98)
+    plt.grid()
     plt.show()
-
-    pass
+"""
 """
     hits_true = loadDataFile("datasets/hits_true.txt")
 

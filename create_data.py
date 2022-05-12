@@ -37,7 +37,7 @@ class SynthGen(tf.keras.utils.Sequence):
         Y = np.zeros((self.bs, self.os))
         for i in range(self.bs):
             x = Display(self.ins)
-            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(2,5)))
+            x.add_ellipses(choice([0,1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(7,15)))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -52,7 +52,7 @@ class SynthGen(tf.keras.utils.Sequence):
         print("Creating dataset...")
         for i in tqdm(range(size)):
             x = Display(self.ins)
-            x.add_ellipses(choice([1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(2,5)))
+            x.add_ellipses(choice([0,1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(7,15)))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -96,7 +96,7 @@ class Display(np.ndarray):
         for n in range(nof_rings):
             yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
             nod = 30 # number of hits that will be deleted
-            hits, r = rand.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(2.0,6.0), 1)
+            hits, r = rand.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(2.0,7.0), 1)
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
@@ -178,7 +178,7 @@ def create_datasets(size, path):
     path should be given as path to directory + filename without file extension
     (e.g. path="data/name")
     """
-    ins, os, minhits, maxhits, rn = (72,32,1), 15, 10, 18, 0.01
+    ins, os, minhits, maxhits, rn = (72,32,1), 15, 12, 30, 0.01
     hpr = (minhits, maxhits)
     gen = SynthGen(ins, os, hpr, rn)
     x, y = gen.create_dataset(size)
@@ -191,7 +191,7 @@ def create_datasets(size, path):
 
 if __name__ == "__main__":
     size = 200000
-    path = "data/" + str(int(size/1000)) + "k"
+    path = "data/" + str(int(size/1000)) + "k-noisy"
     create_datasets(size, path)
 
     # plot a few examples to check if the datasets were created and saved properly

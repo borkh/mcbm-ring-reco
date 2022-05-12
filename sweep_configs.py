@@ -13,15 +13,15 @@ single_run_config = dict(
     parameters=dict(loss =                  dict(value="mse"),
                     # learning rate
                     max_lr =                dict(value=0.05),
-                    init_lr =               dict(value=5e-5),
+                    init_lr =               dict(value=1e-6),
                     lr_decay =              dict(value=0.8),
-                    decay_length =          dict(value=3),
+                    decay_length =          dict(value=4),
 
                     # regularization
                     fc_dropout =            dict(value=0.0),
 
                     # epochs
-                    epochs =                dict(value=100),
+                    epochs =                dict(value=40),
                     batch_size =            dict(value=256),
 
                     # conv2D parameters

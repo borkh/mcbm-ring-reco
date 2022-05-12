@@ -13,7 +13,7 @@ from tensorflow_addons.optimizers import Triangular2CyclicalLearningRate
 import multiprocessing
 
 def train_with_dataset(config=None):
-    multiprocessing.Queue(1000)
+    #multiprocessing.Queue(1000)
     # define model name ---------------------------------------------------------
     name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
@@ -32,8 +32,6 @@ def train_with_dataset(config=None):
         config = wandb.config
         # create model ------------------------------------------------------------
         model = get_model(config.input_shape, config.output_shape, config)
-        #model = tf.keras.models.load_model("models/checkpoints/200k-202204252345.model")
-        #model = get_GAP_model(config.input_shape, config.output_shape, config)
         # compile model ---------------------------------------------------------
         vs = 0.2
         spe = x_train.shape[0]*(1-vs)/config.batch_size # calculate steps per epoch
