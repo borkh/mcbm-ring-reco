@@ -45,6 +45,6 @@ def train_with_dataset(config=None):
                   callbacks=[WandbCallback(), mc, es])
 
 if __name__ == "__main__":
-    sweep_id = wandb.sweep(single_run_config, project='ring-finder')
+    sweep_id = wandb.sweep(sweep_config, project='ring-finder')
     #sweep_id = str("rhaas/ring-finder/183782b7")
-    wandb.agent(sweep_id, train_with_dataset, count=1)
+    wandb.agent(sweep_id, train_with_dataset, count=15)

@@ -41,13 +41,13 @@ void train(){
 
     // define model architecture
     TString l 	   = "Layout=";
-    TString block1 = "CONV|64|3|3|1|1|1|1|RELU,BNORM,CONV|64|3|3|1|1|1|1|RELU,BNORM,MAXPOOL|2|2|2|2,";
-    TString block2 = "CONV|128|3|3|1|1|1|1|RELU,BNORM,CONV|128|3|3|1|1|1|1|RELU,BNORM,MAXPOOL|2|2|2|2,";
-    TString block3 = "CONV|256|3|3|1|1|1|1|RELU,BNORM,CONV|256|3|3|1|1|1|1|RELU,BNORM,MAXPOOL|2|2|2|2,";
-    TString block4 = "CONV|512|3|3|1|1|1|1|RELU,BNORM,CONV|512|3|3|1|1|1|1|RELU,BNORM,MAXPOOL|3|2|2|2,";
-    //TString block2 = "";
-    //TString block3 = "";
-    //TString block4 = "";
+    TString block1 = "CONV|16|3|3|1|1|1|1|RELU,BNORM,CONV|16|3|3|1|1|1|1|RELU,BNORM,MAXPOOL|2|2|2|2,";
+    //TString block2 = "CONV|128|3|3|1|1|1|1|RELU,BNORM,CONV|128|3|3|1|1|1|1|RELU,BNORM,MAXPOOL|2|2|2|2,";
+    //TString block3 = "CONV|256|3|3|1|1|1|1|RELU,BNORM,CONV|256|3|3|1|1|1|1|RELU,BNORM,MAXPOOL|2|2|2|2,";
+    //TString block4 = "CONV|512|3|3|1|1|1|1|RELU,BNORM,CONV|512|3|3|1|1|1|1|RELU,BNORM,MAXPOOL|3|2|2|2,";
+    TString block2 = "";
+    TString block3 = "";
+    TString block4 = "";
     TString out    = "RESHAPE|FLAT,BNORM,DENSE|64|RELU,BNORM,DENSE|15|RELU:";
 
     //TString dropout = "DropConfig=0.05";
