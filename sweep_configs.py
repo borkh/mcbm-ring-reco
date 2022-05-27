@@ -5,23 +5,27 @@ from pprint import pprint
 import random as rand
 import numpy as np
 
-single_run_config = dict(
+run_config = dict(
     method="random",
     metric=dict(name='loss',
                 goal='minimize'
     ),
     parameters=dict(loss =                  dict(value="mse"),
                     # learning rate
-                    max_lr =                dict(value=0.05),
-                    init_lr =               dict(value=1e-6),
+                    max_lr =                dict(value=0.2),
+                    init_lr =               dict(value=1e-5),
                     lr_decay =              dict(value=0.8),
                     decay_length =          dict(value=4),
 
                     # regularization
                     fc_dropout =            dict(value=0.0),
 
+                    # lr schedule
+                    mom_min =               dict(value=0.75),
+                    mom_max =               dict(value=0.95),
+
                     # epochs
-                    epochs =                dict(value=40),
+                    epochs =                dict(value=30),
                     batch_size =            dict(value=256),
 
                     # conv2D parameters
@@ -39,8 +43,9 @@ single_run_config = dict(
 
                     # ring parameters
                     min_hits_per_ring =     dict(value=12),
-                    max_hits_per_ring =     dict(value=21),
-                    ring_noise =            dict(value=0.08)
+                    max_hits_per_ring =     dict(value=30),
+                    ring_noise =            dict(value=0.01),
+                    spe =                   dict(value=625),
     )
 )
 
@@ -51,16 +56,20 @@ sweep_config = dict(
     ),
     parameters=dict(loss =                  dict(value="mse"),
                     # learning rate
-                    max_lr =                dict(value=0.05),
-                    init_lr =               dict(values=[1e-6,2e-6,4e-6,6e-6,8e-6,1e-5,2e-5,4e-5,6e-5,8e-5,1e-4,2e-4,4e-5,6e-4,8e-4]),
+                    max_lr =                dict(value=0.2),
+                    init_lr =               dict(value=1e-5),
                     lr_decay =              dict(value=0.8),
                     decay_length =          dict(value=4),
 
                     # regularization
                     fc_dropout =            dict(value=0.0),
 
+                    # lr schedule
+                    mom_min =               dict(values=[0.9, 0.85, 0.75, 0.65, 0.60]),
+                    mom_max =               dict(values=[0.98, 0.95, 0.91]),
+
                     # epochs
-                    epochs =                dict(value=48),
+                    epochs =                dict(values=[5,10,15,20]),
                     batch_size =            dict(value=256),
 
                     # conv2D parameters

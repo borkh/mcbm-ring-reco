@@ -9,8 +9,8 @@
 int predict(){
 
     TMVA::Reader* reader = new TMVA::Reader("!Silent");
-    TFile* f = new TFile("datasets/320k.root");
-    TTree* t = (TTree*)f->Get("test");
+    TFile* f = new TFile("../data/1k.root");
+    TTree* t = (TTree*)f->Get("train");
     Float_t x[2304];
     Float_t y[15];
     t->SetBranchAddress("x", x);

@@ -41,7 +41,7 @@ class SynthGen(tf.keras.utils.Sequence):
             y = x.params
             X[i] += x
             Y[i] += y
-        return np.array(X, Y)
+        return X, Y
 
     def __len__(self):
         return self.spe
@@ -190,7 +190,7 @@ def create_datasets(size, path):
     create_root_file(x, y, root_path)
 
 if __name__ == "__main__":
-    size = 200000
+    size = 2000
     path = "data/" + str(int(size/1000)) + "k-noisy"
     create_datasets(size, path)
 
