@@ -9,30 +9,29 @@ from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayR
 from keras_lr_finder import LRFinder
 
 def build_model(input_shape, output_shape, config=None):
-    #reg = l2(0.001)
     inputs = Input(input_shape)
     t = inputs
 
-    t = BatchNormalization()(t)
+    t = BatchNormalization(momentum=0.95)(t)
     for n in range(config.conv_layers):
         t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)), # double the number of filters in each subsequent layer
                    config.conv_kernel_size,
                    kernel_initializer="he_uniform",
                    padding="same",
                    activation="relu")(t)
-        t = BatchNormalization()(t)
+        t = BatchNormalization(momentum=0.95)(t)
         t = Conv2D(int(2 ** (np.log2(config.nof_initial_filters) + n)), # double the number of filters in each subsequent layer
                    config.conv_kernel_size,
                    kernel_initializer="he_uniform",
                    padding="same",
                    activation="relu")(t)
-        t = BatchNormalization()(t)
+        t = BatchNormalization(momentum=0.95)(t)
         t = MaxPooling2D((2,2), padding="same")(t)
 
     t = Flatten()(t)
-    t = BatchNormalization()(t)
+    t = BatchNormalization(momentum=0.95)(t)
     t = Dense(config.fc_layer_size, kernel_initializer="he_uniform", activation="relu")(t)
-    t = BatchNormalization()(t)
+    t = BatchNormalization(momentum=0.95)(t)
     outputs = Dense(output_shape,
                     kernel_initializer="he_uniform",
                     activation="relu", name="predictions")(t)

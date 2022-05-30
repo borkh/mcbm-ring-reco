@@ -13,21 +13,17 @@ run_config = dict(
     parameters=dict(loss =                  dict(value="mse"),
                     # learning rate
                     max_lr =                dict(value=0.05),
-                    init_lr =               dict(value=1e-6),
-                    lr_decay =              dict(value=0.8),
+                    init_lr =               dict(value=0.005),
                     decay_length =          dict(value=4),
 
                     # lr schedule
-                    mom_min =               dict(value=0.75),
+                    mom_min =               dict(value=0.80),
                     mom_max =               dict(value=0.95),
-                    phase0perc =            dict(value=0.5),
-
-                    # regularization
-                    fc_dropout =            dict(value=0.0),
+                    phase0perc =            dict(value=0.3),
 
                     # epochs
-                    epochs =                dict(value=8),
-                    batch_size =            dict(value=256),
+                    epochs =                dict(value=10),
+                    batch_size =            dict(value=512),
 
                     # conv2D parameters
                     conv_layers =           dict(value=4),
