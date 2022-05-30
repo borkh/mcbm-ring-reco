@@ -12,20 +12,21 @@ run_config = dict(
     ),
     parameters=dict(loss =                  dict(value="mse"),
                     # learning rate
-                    max_lr =                dict(value=0.2),
-                    init_lr =               dict(value=1e-5),
+                    max_lr =                dict(value=0.05),
+                    init_lr =               dict(value=1e-6),
                     lr_decay =              dict(value=0.8),
                     decay_length =          dict(value=4),
-
-                    # regularization
-                    fc_dropout =            dict(value=0.0),
 
                     # lr schedule
                     mom_min =               dict(value=0.75),
                     mom_max =               dict(value=0.95),
+                    phase0perc =            dict(value=0.5),
+
+                    # regularization
+                    fc_dropout =            dict(value=0.0),
 
                     # epochs
-                    epochs =                dict(value=30),
+                    epochs =                dict(value=8),
                     batch_size =            dict(value=256),
 
                     # conv2D parameters
@@ -44,7 +45,7 @@ run_config = dict(
                     # ring parameters
                     min_hits_per_ring =     dict(value=12),
                     max_hits_per_ring =     dict(value=30),
-                    ring_noise =            dict(value=0.01),
+                    ring_noise =            dict(value=0.03),
                     spe =                   dict(value=625),
     )
 )

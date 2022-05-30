@@ -32,16 +32,17 @@ def train_with_dataset(conf=None):
         model = build_model(conf.input_shape, conf.output_shape, conf)
         vs = 0.2
         steps = np.ceil(len(x_train) * (1-vs) / conf.batch_size) * conf.epochs
-        #spe = len(x_train) * (1-vs) / conf.batch_size # calculate steps per epoch
+        spe = len(x_train) * (1-vs) / conf.batch_size # calculate steps per epoch
 
         # learning rate schedule ------------------------------------------------------------
-        #lr = Triangular2CyclicalLearningRate(conf.init_lr, conf.max_lr, conf.decay_length*spe)
-        lr_schedule = OneCycleSchedule(conf.init_lr, conf.max_lr, steps, conf.mom_min, conf.mom_max)
+        #lr = Triangular2CyclicalLearningRate(conf.init_lr, conf.max_lr, conf.decay_length * spe)
+        lr_schedule = OneCycleSchedule(conf.init_lr, conf.max_lr, steps, conf.mom_min, conf.mom_max, conf.phase0perc)
 
         # compile model ---------------------------------------------------------
-
+        #opt = SGD(lr, momentum=0.9)
         opt = SGD(conf.init_lr, momentum=0.95)
         model.compile(optimizer=opt, loss="mse", metrics=["acc"])
+
         # fit model -------------------------------------------------------------
         model.fit(x_train, y_train, validation_split=vs,
                   epochs=conf.epochs, batch_size=conf.batch_size,
@@ -64,35 +65,26 @@ def train_with_generator(conf=None):
         wandb.run.log_code(".")
         conf = wandb.config
         # create generators -----------------------------------------------------------------
-        traingen = SynthGen(conf.input_shape,
-                            conf.output_shape,
+        traingen = SynthGen(conf.input_shape, conf.output_shape,
                             (conf.min_hits_per_ring, conf.max_hits_per_ring),
-                            conf.ring_noise,
-                            conf.batch_size,
-                            conf.spe)
-        testgen = SynthGen(conf.input_shape,
-                           conf.output_shape,
-                           (conf.min_hits_per_ring, conf.max_hits_per_ring),
-                           conf.ring_noise,
-                           conf.batch_size,
-                           int(conf.spe*0.1))
+                            conf.ring_noise, conf.batch_size, conf.spe)
         # build model ------------------------------------------------------------
         model = build_model(conf.input_shape, conf.output_shape, conf)
         steps = conf.spe * conf.epochs
 
         # learning rate schedule ------------------------------------------------------------
-        #lr = Triangular2CyclicalLearningRate(conf.init_lr, conf.max_lr, conf.decay_length*spe)
-        lr_schedule = OneCycleSchedule(conf.init_lr, conf.max_lr, steps, conf.mom_min, conf.mom_max)
+        #lr = Triangular2CyclicalLearningRate(conf.init_lr, conf.max_lr, conf.decay_length * conf.spe)
+        lr_schedule = OneCycleSchedule(conf.init_lr, conf.max_lr, steps, conf.mom_min, conf.mom_max, conf.phase0perc)
 
         # compile model ---------------------------------------------------------
-
         opt = SGD(conf.init_lr, momentum=0.95)
         model.compile(optimizer=opt, loss="mse", metrics=["acc"])
+
         # fit model -------------------------------------------------------------
         model.fit(traingen, steps_per_epoch=conf.spe, epochs=conf.epochs,
-                  validation_data=testgen, validation_steps=int(conf.spe*0.1),
+                  validation_data=traingen, validation_steps=int(conf.spe*0.1),
                   callbacks=[WandbCallback(), mc, es, lr_schedule])
-        #lr_schedule.plot()
+        lr_schedule.plot()
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(run_config, project='ring-finder')
