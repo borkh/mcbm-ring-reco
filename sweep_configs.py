@@ -23,7 +23,7 @@ run_config = dict(
 
                     # epochs
                     epochs =                dict(value=10),
-                    batch_size =            dict(value=512),
+                    batch_size =            dict(value=256),
 
                     # conv2D parameters
                     conv_layers =           dict(value=4),
@@ -39,9 +39,9 @@ run_config = dict(
                     output_shape =          dict(value=15),
 
                     # ring parameters
-                    min_hits_per_ring =     dict(value=12),
-                    max_hits_per_ring =     dict(value=30),
-                    ring_noise =            dict(value=0.03),
+                    min_hits_per_ring =     dict(value=8),
+                    max_hits_per_ring =     dict(value=21),
+                    ring_noise =            dict(value=0.06),
                     spe =                   dict(value=625),
     )
 )

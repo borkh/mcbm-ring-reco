@@ -64,21 +64,10 @@ def compare_true_and_predict(X_test, y_test, model, seed=42, show_true=True):
         plot = plot_single_event(X_test[m], y_pred[m])
         ax[n].imshow(plot)
 
-def show_predict(X_test, model, M, N, seed=0):
-    plt.rcParams['figure.figsize'] = [30, 10]
-    plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
-
-    rand.seed(seed)
-    indices = rand.sample(range(0, X_test.shape[0]), M*N)
-
+def show_predict(X_test, model, seed=0):
     y_pred = model.predict(X_test)
-
-    fig, ax = plt.subplots(M,N)
-    for n, m in zip(product(range(M), range(N)), indices):
-        plot = plot_single_event(X_test[m], y_pred[m])
-        ax[n].imshow(plot)
-#    fig.tight_layout()
-#    fig.savefig("plots/{}x{}_predictions.png".format(M, N))
+    displays = np.array([plot_single_event(X_test[i], y_pred[i]) for  i in range(y_pred.shape[0])])
+    display_data(displays, seed)
 
 def display_data(imgs, seed=42):
     plt.rcParams['figure.figsize'] = [30, 10]
