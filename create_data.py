@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import numpy as np
-import random as rand
 import pickle as pkl
 from numpy.random import choice, laplace
 from sklearn.datasets import make_circles, make_moons
@@ -41,9 +40,9 @@ class SynthGen(tf.keras.utils.Sequence):
     def create_dataset(self, size=1000):
         X = np.zeros((size, self.ins[0], self.ins[1], self.ins[2]))
         Y = np.zeros((size, self.os))
-        for i in range(size):
+        for i in tqdm(range(size)):
             x = Display(self.ins)
-            x.add_ellipses(choice([0,1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(0,2)))
+            x.add_ellipses(choice([0,1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(0,3)))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -70,32 +69,32 @@ class Display(np.ndarray):
 
     def __add_noise(self, nof_noise_hits=0):
         for _ in range(nof_noise_hits):
-            x, y  = rand.randint(self.minX, self.maxX), rand.randint(self.minY, self.maxY)
+            x, y  = np.random.randint(self.minX, self.maxX), np.random.randint(self.minY, self.maxY)
             self[x,y] = 1
 
     def __get_indices(self, nof_rings):
         indices = range(self.flatten().shape[0])
         self[:,:] = 0
-        return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
+        return sorted(choice(indices, size=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
 
     def add_ellipses(self, nof_rings, hpr, rn=0, nof_noise_hits=None):
         indices = self.__get_indices(nof_rings)
         for n in range(nof_rings):
             yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
-            nod = 30 # number of hits that will be deleted
-            hits, r = rand.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(3.0,9.0), 1)
+            nod = 20 # number of hits that will be deleted
+            hits, r = np.random.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(3.5,9.0), 1)
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
             X[:,0] *= major
             X[:,1] *= minor
 
-            angle = 0 if major==minor else rand.randint(0, 90) # rotate ellipse
+            angle = 0 if major==minor else np.random.randint(0, 90) # rotate ellipse
             X = rotate(X, angle)
 
             X = np.round(X, 0).astype('int32') # convert all entries to integers
 
-            yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
+            yshift, xshift = indices[n] % self.shape[1], int(indices[n] / self.shape[1]) # shift the ellipses based on their index
             X[:,0] += xshift
             X[:,1] += yshift
 
@@ -165,7 +164,7 @@ def create_datasets(size, path):
     path should be given as path to directory + filename without file extension
     (e.g. path="data/name")
     """
-    ins, os, minhits, maxhits, rn = (72,32,1), 15, 12, 30, 0.01
+    ins, os, minhits, maxhits, rn = (72,32,1), 15, 10, 25, 0.08
     hpr = (minhits, maxhits)
     gen = SynthGen(ins, os, hpr, rn)
     print("Creating dataset...")
@@ -178,16 +177,13 @@ def create_datasets(size, path):
     create_root_file(x, y, root_path)
 
 if __name__ == "__main__":
-    size = 2000
-    path = "data/" + str(int(size/1000)) + "k-noisy"
+    size = 200000
+    path = "data/" + str(int(size/1000)) + "k"
     create_datasets(size, path)
 
     # plot a few examples to check if the datasets were created and saved properly
     with open(path + ".pkl", "rb") as f:
         x, y = pkl.load(f)
-    #events = np.array([plot_single_event(x[i], y[i]) for i in range(1000)])
-    #for i in range(5):
-    #    display_data(events, i)
 
     def show(M, N, indices=np.arange(1000)):
         fig, ax = plt.subplots(M,N)
@@ -195,11 +191,13 @@ if __name__ == "__main__":
             plot = plot_single_event(x[m], y[m])
             ax[n].imshow(plot)
         plt.show()
+
     show(3,4, indices=np.arange(1000)[:100])
     show(3,4, indices=np.arange(1000)[100:200])
+    show(3,4, indices=np.arange(1000)[200:300])
+    show(3,4, indices=np.arange(1000)[300:400])
+    show(3,4, indices=np.arange(1000)[400:500])
 
     #events = np.array([plot_single_event(x[i], np.zeros(15)) for i in range(100)])
     #display_data(events)
     #plot_root(path + ".root")
-
-    # TODO: - switch from random to np.random

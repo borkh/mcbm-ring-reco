@@ -11,7 +11,6 @@ from model import *
 from one_cycle import *
 
 def train_with_dataset(conf=None):
-    #multiprocessing.Queue(1000)
     # define model name ---------------------------------------------------------
     name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
@@ -31,16 +30,13 @@ def train_with_dataset(conf=None):
         # build model ------------------------------------------------------------
         model = build_model(conf.input_shape, conf.output_shape, conf)
         vs = 0.2
-        #steps = np.ceil(len(x_train) * (1-vs) / conf.batch_size) * conf.epochs
-        #spe = len(x_train) * (1-vs) / conf.batch_size # calculate steps per epoch
-        steps = conf.spe * conf.epochs
+        spe = len(x_train) * (1-vs) / conf.batch_size # calculate steps per epoch
+        steps = spe * conf.epochs
 
         # learning rate schedule ------------------------------------------------------------
-        #lr = Triangular2CyclicalLearningRate(conf.init_lr, conf.max_lr, conf.decay_length * spe)
         lr_schedule = OneCycleSchedule(conf.init_lr, conf.max_lr, steps, conf.mom_min, conf.mom_max, conf.phase0perc)
 
         # compile model ---------------------------------------------------------
-        #opt = SGD(lr, momentum=0.9)
         opt = SGD(conf.init_lr, momentum=0.95)
         model.compile(optimizer=opt, loss="mse", metrics=["acc"])
 
@@ -51,7 +47,6 @@ def train_with_dataset(conf=None):
         #lr_schedule.plot()
 
 def train_with_generator(conf=None):
-    #multiprocessing.Queue(1000)
     # define model name ---------------------------------------------------------
     name, now = "generator", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
@@ -74,7 +69,6 @@ def train_with_generator(conf=None):
         steps = conf.spe * conf.epochs
 
         # learning rate schedule ------------------------------------------------------------
-        #lr = Triangular2CyclicalLearningRate(conf.init_lr, conf.max_lr, conf.decay_length * conf.spe)
         lr_schedule = OneCycleSchedule(conf.init_lr, conf.max_lr, steps, conf.mom_min, conf.mom_max, conf.phase0perc)
 
         # compile model ---------------------------------------------------------
@@ -89,5 +83,4 @@ def train_with_generator(conf=None):
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(run_config, project='ring-finder')
-    #sweep_id = str("rhaas/ring-finder/x6wx9dnm")
-    wandb.agent(sweep_id, train_with_generator, count=1)
+    wandb.agent(sweep_id, train_with_dataset, count=1)
