@@ -33,15 +33,7 @@ class SynthGen(tf.keras.utils.Sequence):
         self.rn = rn
 
     def __getitem__(self, index):
-        X = np.zeros((self.bs, self.ins[0], self.ins[1], self.ins[2]))
-        Y = np.zeros((self.bs, self.os))
-        for i in range(self.bs):
-            x = Display(self.ins)
-            x.add_ellipses(choice([0,1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(0,2)))
-            y = x.params
-            X[i] += x
-            Y[i] += y
-        return X, Y
+        return self.create_dataset(self.bs)
 
     def __len__(self):
         return self.spe
@@ -49,8 +41,7 @@ class SynthGen(tf.keras.utils.Sequence):
     def create_dataset(self, size=1000):
         X = np.zeros((size, self.ins[0], self.ins[1], self.ins[2]))
         Y = np.zeros((size, self.os))
-        print("Creating dataset...")
-        for i in tqdm(range(size)):
+        for i in range(size):
             x = Display(self.ins)
             x.add_ellipses(choice([0,1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(0,2)))
             y = x.params
@@ -83,10 +74,6 @@ class Display(np.ndarray):
             self[x,y] = 1
 
     def __get_indices(self, nof_rings):
-        # uncomment to restrict ellipses to center of the display (no extension over the edges)
-        #self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
-        #indices = np.where(self.flatten() == 1)[0] # get the indices of that area
-        # uncomment to have no restrictions of ellipses centers
         indices = range(self.flatten().shape[0])
         self[:,:] = 0
         return sorted(rand.choices(indices, k=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
@@ -96,7 +83,7 @@ class Display(np.ndarray):
         for n in range(nof_rings):
             yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
             nod = 30 # number of hits that will be deleted
-            hits, r = rand.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(2.0,7.0), 1)
+            hits, r = rand.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(3.0,9.0), 1)
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
@@ -112,7 +99,7 @@ class Display(np.ndarray):
             X[:,0] += xshift
             X[:,1] += yshift
 
-            # take only points that are in the display range in order to avoid having the majority of points outside
+            # take only points that are in the display range so the majority of points aren't outside
             # the array range and therefore fitting rings with only 2 or 3 points
             X = np.array([x for x in set(tuple(x) for x in X) & set(tuple(x) for x in self.positions)])
 
@@ -181,6 +168,7 @@ def create_datasets(size, path):
     ins, os, minhits, maxhits, rn = (72,32,1), 15, 12, 30, 0.01
     hpr = (minhits, maxhits)
     gen = SynthGen(ins, os, hpr, rn)
+    print("Creating dataset...")
     x, y = gen.create_dataset(size)
 
     with open(path + ".pkl", "wb") as f:
@@ -209,12 +197,9 @@ if __name__ == "__main__":
         plt.show()
     show(3,4, indices=np.arange(1000)[:100])
     show(3,4, indices=np.arange(1000)[100:200])
-    #show(4,8, indices=np.arange(1000)[200:300])
-    #show(4,8, indices=np.arange(1000)[300:400])
 
     #events = np.array([plot_single_event(x[i], np.zeros(15)) for i in range(100)])
     #display_data(events)
     #plot_root(path + ".root")
 
     # TODO: - switch from random to np.random
-    #       - remove hard coding of max ring scaling line 122-123

@@ -17,7 +17,7 @@ class CosineAnnealer:
         return self.end + (self.start - self.end) / 2.0 * cos
 
 class OneCycleSchedule(tf.keras.callbacks.Callback):
-    def __init__(self, lr_min, lr_max, steps, mom_min=.85, mom_max=.95, phase0perc=0.3):
+    def __init__(self, lr_min, lr_max, steps, mom_min=.85, mom_max=.95, phase0perc=0.2):
         super(OneCycleSchedule, self).__init__()
         lr_final = lr_min / 1000
         phase0steps = int(steps * phase0perc)
