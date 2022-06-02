@@ -42,7 +42,7 @@ class SynthGen(tf.keras.utils.Sequence):
         Y = np.zeros((size, self.os))
         for i in tqdm(range(size)):
             x = Display(self.ins)
-            x.add_ellipses(choice([0,1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(0,3)))
+            x.add_ellipses(choice([0,1,2,3]), (self.minhits, self.maxhits), self.rn, choice(range(0,4)))
             y = x.params
             X[i] += x
             Y[i] += y
@@ -100,20 +100,22 @@ class Display(np.ndarray):
 
             # take only points that are in the display range so the majority of points aren't outside
             # the array range and therefore fitting rings with only 2 or 3 points
-            X = np.array([x for x in set(tuple(x) for x in X) & set(tuple(x) for x in self.positions)])
 
             X = X[:hits-nod] # delete a few pairs to have irregular distances between ring points
+            X = np.array([x for x in set(tuple(x) for x in X) & set(tuple(x) for x in self.positions)]) # remove entries outside of display
+            X = np.unique(X, axis=0) # only take unique pairs
 
-            for x, y in zip(X[:,0], X[:,1]): # set the values of the positions of the ring points in the display image to 1
-                if (x >= 0 and x < self.shape[0] and
-                    y >= 0 and y < self.shape[1]):
-                    self[x,y] = 1
+            if len(X) >= hpr[0]: # check if rings still have at least 'minhits' hits
+                for x, y in zip(X[:,0], X[:,1]): # set the values of the positions of the ring points in the display image to 1
+                        self[x,y] = 1
 
-            pars = [(xshift+0.5),
-                    (yshift+0.5),
-                    major,
-                    minor,
-                    angle] # write parameters of each rings into self.params
+                pars = [(xshift+0.5),
+                        (yshift+0.5),
+                        major,
+                        minor,
+                        angle] # write parameters of each rings into self.params
+            else:
+                pars = [0,0,0,0,0]
 
             for i in range(5):
                 self.params[n*5 + i] = pars[i]
@@ -164,7 +166,7 @@ def create_datasets(size, path):
     path should be given as path to directory + filename without file extension
     (e.g. path="data/name")
     """
-    ins, os, minhits, maxhits, rn = (72,32,1), 15, 10, 25, 0.08
+    ins, os, minhits, maxhits, rn = (72,32,1), 15, 10, 30, 0.08
     hpr = (minhits, maxhits)
     gen = SynthGen(ins, os, hpr, rn)
     print("Creating dataset...")
