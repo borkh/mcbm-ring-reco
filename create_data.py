@@ -176,6 +176,7 @@ def create_datasets(size, path):
     gen = SynthGen(ins, os, hpr, rn)
     print("Creating dataset...")
     x, y = gen.create_dataset(size)
+    x = np.array([a.flatten() for a in x])
 
     with open(path + ".pkl", "wb") as f:
         pkl.dump([x, y], f)
@@ -185,12 +186,13 @@ def create_datasets(size, path):
 
 if __name__ == "__main__":
     size = 200000
-    path = "data/" + str(int(size/1000)) + "k"
+    path = "data/" + str(int(size/1000)) + "k-flattened"
     create_datasets(size, path)
 
     # plot a few examples to check if the datasets were created and saved properly
     with open(path + ".pkl", "rb") as f:
         x, y = pkl.load(f)
+        x = np.array([a.reshape((72,32,1)) for a in x])
 
     def show(M, N, indices=np.arange(1000)):
         fig, ax = plt.subplots(M,N)

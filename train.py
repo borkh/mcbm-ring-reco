@@ -21,7 +21,7 @@ def train_with_dataset(conf=None):
                                             monitor="val_loss",
                                             save_best_only=True)
     # load data _______----------------------------------------------------------
-    with open("data/200k.pkl", "rb") as f:
+    with open("data/200k-flattened.pkl", "rb") as f:
         x_train, y_train = pkl.load(f)
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):

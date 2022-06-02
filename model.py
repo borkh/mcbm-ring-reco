@@ -2,7 +2,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import (Input, Conv2D, MaxPooling2D, Flatten,
+from tensorflow.keras.layers import (Input, Conv2D, MaxPooling2D, Flatten, Reshape,
                                      Dense, Dropout, BatchNormalization, GlobalAveragePooling2D)
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
@@ -10,7 +10,7 @@ from keras_lr_finder import LRFinder
 
 def build_model(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
-    t = inputs
+    t = Reshape((72,32,1))(inputs)
 
     t = BatchNormalization(momentum=0.95)(t)
     for n in range(config.conv_layers):
