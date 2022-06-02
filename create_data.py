@@ -7,6 +7,10 @@ from sklearn.datasets import make_circles, make_moons
 from tqdm import tqdm
 from visual_functions import *
 
+import sys
+import numpy
+numpy.set_printoptions(threshold=sys.maxsize)
+
 """
 Adrains PhD Thesis:
     CBM:
@@ -79,6 +83,7 @@ class Display(np.ndarray):
 
     def add_ellipses(self, nof_rings, hpr, rn=0, nof_noise_hits=None):
         indices = self.__get_indices(nof_rings)
+        parshift = 0
         for n in range(nof_rings):
             yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
             nod = 20 # number of hits that will be deleted
@@ -114,11 +119,11 @@ class Display(np.ndarray):
                         major,
                         minor,
                         angle] # write parameters of each rings into self.params
-            else:
-                pars = [0,0,0,0,0]
 
-            for i in range(5):
-                self.params[n*5 + i] = pars[i]
+                for i in range(5):
+                    self.params[(n-parshift)*5 + i] = pars[i]
+            else:
+                parshift += 1 # if one ring doesn't have at least 'minhits' hits the next ring's parameters will be shifted to the left
 
         if nof_noise_hits is not None:
             self.__add_noise(nof_noise_hits)
