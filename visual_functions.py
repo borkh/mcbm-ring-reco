@@ -31,17 +31,12 @@ def plot_single_event(X, Y, scaling=5):
                    interpolation=cv2.INTER_AREA)
 
     # split list into chunks of five for each ellipse
-    Y = [Y[i:i + 5] for i in range(0, len(Y), 5)]
-
+    Y = np.array([Y[i:i + 5]*scaling for i in range(0, len(Y), 5)])
     # iterate over all rings
-    for x, y, major, minor, angle in Y:
-        center_x = int(y * scaling)# * X.shape[1])
-        center_y = int(x * scaling)# * X.shape[0])
-        major = int(major * scaling)# * X.shape[0])
-        minor = int(minor * scaling)# * X.shape[1])
-
+    for center_x, center_y, major, minor, angle in Y.astype(int):
         X = cv2.ellipse(X, (center_x, center_y), (major, minor),
                         angle + 90, 0, 360, (1,1,1))
+
     return X
 
 def compare_true_and_predict(X_test, y_test, model, seed=42, show_true=True):
