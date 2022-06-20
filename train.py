@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import datetime, multiprocessing
+import datetime, os
 import tensorflow as tf, pickle as pkl, numpy as np
 from wandb.keras import WandbCallback
 from tensorflow.keras.optimizers import Adam, SGD
@@ -10,9 +10,16 @@ from sweep_configs import *
 from model import *
 from one_cycle import *
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'    # Suppress TensorFlow logging (1)
+tf.get_logger().setLevel('ERROR')           # Suppress TensorFlow logging (2)
+# Enable GPU dynamic memory allocation
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
 def train_with_dataset(conf=None):
     # define model name ---------------------------------------------------------
-    name, now = "100k", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
 
     # define callbacks ----------------------------------------------------------
@@ -21,7 +28,7 @@ def train_with_dataset(conf=None):
                                             monitor="val_loss",
                                             save_best_only=True)
     # load data _______----------------------------------------------------------
-    with open("data/100k.pkl", "rb") as f:
+    with open("data/200k.pkl", "rb") as f:
         x_train, y_train, _ = pkl.load(f)
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):
@@ -44,7 +51,6 @@ def train_with_dataset(conf=None):
         model.fit(x_train, y_train, validation_split=vs,
                   epochs=conf.epochs, batch_size=conf.batch_size,
                   callbacks=[WandbCallback(), mc, es, lr_schedule])
-        #lr_schedule.plot()
 
 def train_with_generator(conf=None):
     # define model name ---------------------------------------------------------

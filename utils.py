@@ -31,12 +31,9 @@ def plot_single_event(X, Y, scaling=10):
                        X.shape[0]*scaling),
                    interpolation=cv2.INTER_AREA)
 
-    # split list into chunks of five for each ellipse
-    Y = np.array([Y[i:i + 5]*scaling for i in range(0, len(Y), 5)], dtype=int)
     # iterate over all rings
-    for center_x, center_y, major, minor, angle in Y.astype(int):
-        X = cv2.ellipse(X, (int(center_x), int(center_y)), (int(major), int(minor)),
-                        int(angle) + 90, 0, 360, (1,1,1), 2)
+    for ring in (Y*scaling).astype(int):
+        X = cv2.ellipse(X, (ring[0], ring[1]), (ring[2], ring[3]), ring[4] + 90, 0, 360, (1,1,1), 2)
 
     return X
 

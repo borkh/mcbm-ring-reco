@@ -3,7 +3,7 @@ import numpy as np, pickle as pkl
 from numpy.random import choice
 from sklearn.datasets import make_circles, make_moons
 from tqdm import tqdm
-from visual_functions import *
+from utils import *
 
 import sys
 np.set_printoptions(threshold=sys.maxsize)
@@ -151,7 +151,7 @@ def show(M, N, x, y, z, indices=np.arange(1000)):
 if __name__ == "__main__":
     import matplotlib
     matplotlib.use('TkAgg')
-    size = 100000
+    size = 200000
     path = "data/" + str(int(size/1000)) + "k"
     create_datasets(size, path)
 
