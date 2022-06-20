@@ -10,7 +10,7 @@ from keras_lr_finder import LRFinder
 
 def build_model(input_shape, output_shape, config=None):
     inputs = Input(input_shape)
-    t = Reshape((72,32,1))(inputs)
+    t = inputs
 
     t = BatchNormalization(momentum=0.95)(t)
     for n in range(config.conv_layers):

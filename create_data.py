@@ -88,7 +88,7 @@ class Display(np.ndarray):
         self.nof_rings = nof_rings
         n = 0
         while n < nof_rings:
-            yshift, xshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
+            xshift, yshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
             nod = 20 # number of hits that will be deleted
             hits, r = np.random.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(3.5,9.0), 1)
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
@@ -149,7 +149,9 @@ def show(M, N, x, y, z, indices=np.arange(1000)):
     plt.show()
 
 if __name__ == "__main__":
-    size = 300
+    import matplotlib
+    matplotlib.use('TkAgg')
+    size = 100000
     path = "data/" + str(int(size/1000)) + "k"
     create_datasets(size, path)
 
@@ -157,5 +159,5 @@ if __name__ == "__main__":
         x, y, z = pkl.load(f)
 
     show(3,4, x, y, z, np.arange(1000)[:100])
-    show(3,4, x, y, z, np.arange(1000)[100:200])
-    show(3,4, x, y, z, np.arange(1000)[200:300])
+    #show(3,4, x, y, z, np.arange(1000)[100:200])
+    #show(3,4, x, y, z, np.arange(1000)[200:300])

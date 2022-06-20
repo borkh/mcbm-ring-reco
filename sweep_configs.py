@@ -21,7 +21,7 @@ run_config = dict(
                     phase0perc =            dict(value=0.3),
 
                     # epochs
-                    epochs =                dict(value=30),
+                    epochs =                dict(value=10),
                     batch_size =            dict(value=256),
 
                     # conv2D parameters
@@ -34,7 +34,7 @@ run_config = dict(
                     fc_activation =         dict(value="relu"),
 
                     # shapes
-                    input_shape =           dict(value=2304),
+                    input_shape =           dict(value=(72,32,1)),
                     output_shape =          dict(value=15),
 
                     # ring parameters

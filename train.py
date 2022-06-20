@@ -12,7 +12,7 @@ from one_cycle import *
 
 def train_with_dataset(conf=None):
     # define model name ---------------------------------------------------------
-    name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name, now = "100k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
 
     # define callbacks ----------------------------------------------------------
@@ -21,15 +21,15 @@ def train_with_dataset(conf=None):
                                             monitor="val_loss",
                                             save_best_only=True)
     # load data _______----------------------------------------------------------
-    with open("data/200k-flattened.pkl", "rb") as f:
-        x_train, y_train = pkl.load(f)
+    with open("data/100k.pkl", "rb") as f:
+        x_train, y_train, _ = pkl.load(f)
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):
         wandb.run.log_code(".")
         conf = wandb.config
         # build model ------------------------------------------------------------
         model = build_model(conf.input_shape, conf.output_shape, conf)
-        vs = 0.2
+        vs = 0.1
         spe = len(x_train) * (1-vs) / conf.batch_size # calculate steps per epoch
         steps = spe * conf.epochs
 
