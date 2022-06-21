@@ -19,13 +19,13 @@ for gpu in gpus:
 
 def train_with_dataset(conf=None):
     # define model name ---------------------------------------------------------
-    name, now = "2k", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
 
     # define callbacks ----------------------------------------------------------
     mc = tf.keras.callbacks.ModelCheckpoint(model_path, monitor="val_loss", save_best_only=False)
     # load data _______----------------------------------------------------------
-    with open("data/2k.pkl", "rb") as f:
+    with open("data/200k.pkl", "rb") as f:
         x, y = pkl.load(f)
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):

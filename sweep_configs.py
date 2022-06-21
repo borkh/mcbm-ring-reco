@@ -12,8 +12,8 @@ run_config = dict(
     ),
     parameters=dict(loss =                  dict(value="mse"),
                     # learning rate
-                    max_lr =                dict(value=0.03),
-                    init_lr =               dict(value=0.003),
+                    max_lr =                dict(value=0.01),
+                    init_lr =               dict(value=0.001),
 
                     # lr schedule
                     mom_min =               dict(value=0.80),
@@ -21,8 +21,8 @@ run_config = dict(
                     phase0perc =            dict(value=0.3),
 
                     # epochs
-                    epochs =                dict(value=6),
-                    batch_size =            dict(value=64),
+                    epochs =                dict(value=12),
+                    batch_size =            dict(value=256),
 
                     # conv2D parameters
                     conv_layers =           dict(value=4),

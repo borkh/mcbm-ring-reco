@@ -45,7 +45,7 @@ class DataGen(tf.keras.utils.Sequence):
         for i in range(size):# tqdm(range(size)):
             x = Display(self.ins)
             nof_rings = choice(range(0,4))
-            x.add_ellipses(nof_rings, (self.minhits, self.maxhits), self.rn, choice(range(0,5)))
+            x.add_ellipses(nof_rings, (self.minhits, self.maxhits), self.rn, choice(range(0,3)))
             y = x.params
             #b = x.bboxes
             X[i] += x
