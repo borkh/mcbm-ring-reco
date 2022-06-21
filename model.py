@@ -9,8 +9,8 @@ from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayR
 from keras_lr_finder import LRFinder
 
 def build_model(input_shape, output_shape, config=None):
-    inputs = Input(input_shape)
-    t = inputs
+    input_ = Input(input_shape)
+    t = input_
 
     t = BatchNormalization(momentum=0.95)(t)
     for n in range(config.conv_layers):
@@ -32,11 +32,11 @@ def build_model(input_shape, output_shape, config=None):
     t = BatchNormalization(momentum=0.95)(t)
     t = Dense(config.fc_layer_size, kernel_initializer="he_uniform", activation="relu")(t)
     t = BatchNormalization(momentum=0.95)(t)
-    outputs = Dense(output_shape,
-                    kernel_initializer="he_uniform",
-                    activation="relu", name="predictions")(t)
+    t = Dense(25, kernel_initializer="he_uniform", activation="relu",
+            name="predictions")(t)
+    output = Reshape((5,5))(t)
 
-    model = Model(inputs, outputs)
+    model = Model(input_, output)
     model.summary()
     return model
 
@@ -63,9 +63,11 @@ def build_model_no_config(input_shape, output_shape):
     t = BatchNormalization()(t)
     t = Dense(64, activation="relu", name="fc{}".format(n))(t)
     t = BatchNormalization()(t)
-    outputs = Dense(output_shape, activation="relu", name="predictions")(t)
+    t = Dense(25, kernel_initializer="he_uniform", activation="relu",
+            name="predictions")(t)
+    output = Reshape((5,5))(t)
 
-    model = Model(inputs, outputs)
+    model = Model(inputs, output)
 
     model.summary()
     return model

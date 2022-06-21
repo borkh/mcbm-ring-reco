@@ -33,7 +33,10 @@ def plot_single_event(X, Y, scaling=10):
 
     # iterate over all rings
     for ring in (Y*scaling).astype(int):
-        X = cv2.ellipse(X, (ring[0], ring[1]), (ring[2], ring[3]), ring[4] + 90, 0, 360, (1,1,1), 2)
+        X = cv2.ellipse(X, (ring[0], ring[1]),
+                           (ring[2], ring[3]),
+                           ring[4] + 90, 0, 360,
+                           (1,1,1), 2)
 
     return X
 

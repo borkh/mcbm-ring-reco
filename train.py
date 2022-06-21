@@ -19,17 +19,14 @@ for gpu in gpus:
 
 def train_with_dataset(conf=None):
     # define model name ---------------------------------------------------------
-    name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name, now = "2k", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
 
     # define callbacks ----------------------------------------------------------
-    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=3000)
-    mc = tf.keras.callbacks.ModelCheckpoint(model_path,
-                                            monitor="val_loss",
-                                            save_best_only=True)
+    mc = tf.keras.callbacks.ModelCheckpoint(model_path, monitor="val_loss", save_best_only=False)
     # load data _______----------------------------------------------------------
-    with open("data/200k.pkl", "rb") as f:
-        x_train, y_train, _ = pkl.load(f)
+    with open("data/2k.pkl", "rb") as f:
+        x, y = pkl.load(f)
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):
         wandb.run.log_code(".")
@@ -37,7 +34,7 @@ def train_with_dataset(conf=None):
         # build model ------------------------------------------------------------
         model = build_model(conf.input_shape, conf.output_shape, conf)
         vs = 0.1
-        spe = len(x_train) * (1-vs) / conf.batch_size # calculate steps per epoch
+        spe = len(x) * (1-vs) / conf.batch_size # calculate steps per epoch
         steps = spe * conf.epochs
 
         # learning rate schedule ------------------------------------------------------------
@@ -48,45 +45,44 @@ def train_with_dataset(conf=None):
         model.compile(optimizer=opt, loss="mse", metrics=["acc"])
 
         # fit model -------------------------------------------------------------
-        model.fit(x_train, y_train, validation_split=vs,
+        model.fit(x, y, validation_split=vs,
                   epochs=conf.epochs, batch_size=conf.batch_size,
-                  callbacks=[WandbCallback(), mc, es, lr_schedule])
+                  callbacks=[WandbCallback(), mc, lr_schedule])
 
 def train_with_generator(conf=None):
-    # define model name ---------------------------------------------------------
-    name, now = "generator", datetime.datetime.now().strftime("%Y%m%d%H%M")
-    model_path = "models/checkpoints/{}-{}.model".format(name, now)
+    try:
+        # define model name ---------------------------------------------------------
+        name, now = "generator", datetime.datetime.now().strftime("%Y%m%d%H%M")
+        model_path = "models/checkpoints/{}-{}.model".format(name, now)
 
-    # define callbacks ----------------------------------------------------------
-    es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=3000)
-    mc = tf.keras.callbacks.ModelCheckpoint(model_path,
-                                            monitor="val_loss",
-                                            save_best_only=True)
-    # initialize agent ----------------------------------------------------------
-    with wandb.init(config=None):
-        wandb.run.log_code(".")
-        conf = wandb.config
-        # create generators -----------------------------------------------------------------
-        traingen = SynthGen(conf.input_shape, conf.output_shape,
-                            (conf.min_hits_per_ring, conf.max_hits_per_ring),
-                            conf.ring_noise, conf.batch_size, conf.spe)
-        # build model ------------------------------------------------------------
-        model = build_model(conf.input_shape, conf.output_shape, conf)
-        steps = conf.spe * conf.epochs
+        # define callbacks ----------------------------------------------------------
+        mc = tf.keras.callbacks.ModelCheckpoint(model_path, monitor="val_loss", save_best_only=False)
+        # initialize agent ----------------------------------------------------------
+        with wandb.init(config=None):
+            wandb.run.log_code(".")
+            conf = wandb.config
+            # create generators -----------------------------------------------------------------
+            traingen = DataGen(conf.input_shape, (conf.min_hits_per_ring, conf.max_hits_per_ring),
+                                conf.ring_noise, conf.batch_size, conf.spe)
+            # build model ------------------------------------------------------------
+            model = build_model(conf.input_shape, conf.output_shape, conf)
+            steps = conf.spe * conf.epochs
 
-        # learning rate schedule ------------------------------------------------------------
-        lr_schedule = OneCycleSchedule(conf.init_lr, conf.max_lr, steps, conf.mom_min, conf.mom_max, conf.phase0perc)
+            # learning rate schedule ------------------------------------------------------------
+            lr_schedule = OneCycleSchedule(conf.init_lr, conf.max_lr, steps, conf.mom_min, conf.mom_max, conf.phase0perc)
 
-        # compile model ---------------------------------------------------------
-        opt = SGD(conf.init_lr, momentum=0.95)
-        model.compile(optimizer=opt, loss="mse", metrics=["acc"])
+            # compile model ---------------------------------------------------------
+            opt = SGD(conf.init_lr, momentum=0.95)
+            model.compile(optimizer=opt, loss="mse", metrics=["acc"])
 
-        # fit model -------------------------------------------------------------
-        model.fit(traingen, steps_per_epoch=conf.spe, epochs=conf.epochs,
-                  validation_data=traingen, validation_steps=int(conf.spe*0.1),
-                  callbacks=[WandbCallback(), mc, es, lr_schedule])
-        #lr_schedule.plot()
+            # fit model -------------------------------------------------------------
+            model.fit(traingen, steps_per_epoch=conf.spe, epochs=conf.epochs,
+                      validation_data=traingen, validation_steps=int(conf.spe*0.1),
+                      callbacks=[WandbCallback(), mc, lr_schedule])
+            #lr_schedule.plot()
+    except Exception as e:
+        print(e)
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(run_config, project='ring-finder')
-    wandb.agent(sweep_id, train_with_dataset, count=1)
+    wandb.agent(sweep_id, train_with_generator, count=1)

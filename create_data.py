@@ -23,9 +23,8 @@ def rotate(img, angle=0):
     return img @ rotation_matrix
 
 class DataGen(tf.keras.utils.Sequence):
-    def __init__(self, input_shape, output_shape, hits_per_ring, rn, batch_size=32, steps_per_epoch=1000):
+    def __init__(self, input_shape, hits_per_ring, rn, batch_size=32, steps_per_epoch=1000):
         self.ins = input_shape
-        self.os = output_shape
         self.bs = batch_size
         self.spe = steps_per_epoch
         self.minhits = hits_per_ring[0]
@@ -33,40 +32,44 @@ class DataGen(tf.keras.utils.Sequence):
         self.rn = rn
 
     def __getitem__(self, index):
-        return self.create_regression_set(self.bs)
+        return self.create_dataset(self.bs)
 
     def __len__(self):
         return self.spe
 
-    def create_datasets(self, size=1000):
+    def create_dataset(self, size=1000):
         X = np.zeros((size, self.ins[0], self.ins[1], self.ins[2]))
-        Y = np.zeros((size, self.os))
+        Y = list()
         Z = np.zeros((size))
-        for i in tqdm(range(size)):
+        #B = np.zeros((size, 20, 5)) # ground truth boxes
+        for i in range(size):# tqdm(range(size)):
             x = Display(self.ins)
-            nof_rings = choice([0,1,2,3])
-
+            nof_rings = choice(range(0,4))
             x.add_ellipses(nof_rings, (self.minhits, self.maxhits), self.rn, choice(range(0,5)))
             y = x.params
+            #b = x.bboxes
             X[i] += x
-            Y[i] += y
-            Z[i] = x.nof_rings
-        return X, Y, Z
+            Y.append(y)
+            Z[i] += x.nof_rings
+            #B[i] += b
+        return X, np.array(Y)#).reshape((size,25))#, Z, B
 
 class Display(np.ndarray):
     def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
                 strides=None, order=None, info=None):
         obj = super().__new__(subtype, shape, dtype, buffer=np.zeros(shape),
                               offset=offset, strides=strides, order=order)
-        obj.info = info
         obj.ee = 0
         obj.minX, obj.maxX, obj.minY, obj.maxY = (obj.ee,
                                                   obj.shape[0] - obj.ee,
                                                   obj.ee,
                                                   obj.shape[1] - obj.ee)
-        obj.params = np.zeros(15)
+        obj.params = np.zeros((5,5))
+        #obj.bboxes = np.zeros((4,5))
         obj.nof_rings = 0
-        obj.positions = np.array([(x, y) for x in range(obj.shape[0]) for y in range(obj.shape[1])])
+        obj.positions = np.array([(x, y) for x in range(obj.shape[0])
+                                         for y in range(obj.shape[1])])
+        obj.info = info
         return obj
 
     def __array_finalize__(self, obj):
@@ -75,11 +78,15 @@ class Display(np.ndarray):
 
     def __add_noise(self, nof_noise_hits=0):
         for _ in range(nof_noise_hits):
-            x, y  = np.random.randint(self.minX, self.maxX), np.random.randint(self.minY, self.maxY)
+            x, y  = np.random.randint(0, self.shape[0]), np.random.randint(0, self.shape[1])
             self[x,y] = 1
 
     def __get_indices(self, nof_rings):
-        indices = range(self.flatten().shape[0])
+        # uncomment to restrict ellipses to center of the display (no extension over the edges)
+        self[self.minX:self.maxX,self.minY:self.maxY] = 1 # set area where the centers of the ellipses are allowed to 1
+        indices = np.where(self.flatten() == 1)[0] # get the indices of that area
+        # uncomment to have no restrictions of ellipses centers
+        #indices = range(self.flatten().shape[0])
         self[:,:] = 0
         return sorted(choice(indices, size=nof_rings)) # return sorted list of size 'nof_rings' of random indices in that area
 
@@ -94,8 +101,8 @@ class Display(np.ndarray):
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
-            X[:,0] *= major
-            X[:,1] *= minor
+            X[:,1] *= major
+            X[:,0] *= minor
 
             angle = 0 if major==minor else np.random.randint(0, 90) # rotate ellipse
             X = rotate(X, angle)
@@ -114,50 +121,43 @@ class Display(np.ndarray):
                 for x, y in zip(X[:,0], X[:,1]): # set the values of the positions of the ring points in the display image to 1
                         self[x,y] = 1
 
-                pars = [(xshift+0.5), (yshift+0.5), major, minor, angle] # write parameters of each rings into self.params
+                pars = [xshift+0.5, yshift+0.5, major, minor, angle]
+                self.params[n] = np.array(pars) # write parameters of each ring into self.params
 
-                for i in range(5):
-                    self.params[n*5 + i] = pars[i]
+                #bbox = list(to_VOC_format(xshift+0.5, yshift+0.5, 2*major+1.5, 2*minor+1.5)) # write bbox of each ring into self.bboxes
+                #if bbox[0] < 0: bbox[0] = 0
+                #if bbox[1] < 0: bbox[1] = 0
+                #if bbox[2] > self.shape[1]: bbox[2] = self.shape[1]
+                #if bbox[3] > self.shape[0]: bbox[3] = self.shape[0]
+                #self.bboxes[n] = np.array(bbox)
                 n += 1
             else: # create new indices and create rings again
                 indices = self.__get_indices(nof_rings)
+                self.params = np.zeros((5,5))
+                #self.bboxes = list()
                 n = 0
 
         if nof_noise_hits is not None:
             self.__add_noise(nof_noise_hits)
 
-def create_datasets(size, path):
+def create_dataset(size, show_samples=True):
+    path = f'data/{int(size/1000)}k'
     ins = (72,32,1)
-    os, minhits, maxhits, rn = 15, 12, 25, 0.08
-    hpr = (minhits, maxhits)
-
     print("Creating datasets...")
-    gen = DataGen(ins, os, hpr, rn)
-    x, y, z = gen.create_datasets(size)
+    gen = DataGen(ins, (12, 25), 0.08)
+    X, Y = gen.create_dataset(size)
     with open(path + ".pkl", "wb") as f:
-        pkl.dump([x, y, z], f)
+        pkl.dump([X, Y], f)
+    if show_samples:
+        #Y = np.reshape(Y, (Y.shape[0], 5, Y.shape[1]//5))
+        samples = [plot_single_event(x,y) for x, y in zip(X, Y)]
+        display_images(1, 8, samples, 2)
 
-def show(M, N, x, y, z, indices=np.arange(1000)):
-    plt.rcParams['figure.figsize'] = [30, 10]
-    plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
-
-    fig, ax = plt.subplots(M,N)
-    for n, m in zip(product(range(M), range(N)), indices):
-        plot = plot_single_event(x[m], y[m])
-        ax[n].imshow(plot)
-        ax[n].set_title(str(z[m]))
-    plt.show()
 
 if __name__ == "__main__":
     import matplotlib
     matplotlib.use('TkAgg')
-    size = 200000
-    path = "data/" + str(int(size/1000)) + "k"
-    create_datasets(size, path)
+    create_dataset(200)
 
-    with open(path + ".pkl", "rb") as f:
-        x, y, z = pkl.load(f)
-
-    show(3,4, x, y, z, np.arange(1000)[:100])
-    #show(3,4, x, y, z, np.arange(1000)[100:200])
-    #show(3,4, x, y, z, np.arange(1000)[200:300])
+    #with open(path + ".pkl", "rb") as f:
+    #    x, y, z = pkl.load(f)
