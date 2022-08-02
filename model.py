@@ -40,6 +40,77 @@ def build_model(input_shape, output_shape, config=None):
     model.summary()
     return model
 
+def build_model2(input_shape, output_shape, config=None):
+    input_ = Input(input_shape)
+    t = input_
+
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(64, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(64, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = MaxPooling2D((2,2), padding="same")(t)
+
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(128, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(128, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = MaxPooling2D((2,2), padding="same")(t)
+
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(256, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(256, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(256, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = MaxPooling2D((2,2), padding="same")(t)
+
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(512, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(512, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(512, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = MaxPooling2D((2,2), padding="same")(t)
+
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(1024, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(1024, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Conv2D(1024, config.conv_kernel_size, kernel_initializer="he_uniform", padding="same", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = MaxPooling2D((2,2), padding="same")(t)
+
+    t = Flatten()(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Dense(config.fc_layer_size, kernel_initializer="he_uniform", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Dense(25, kernel_initializer="he_uniform", activation="relu",
+            name="predictions")(t)
+    output = Reshape((5,5))(t)
+
+    model = Model(input_, output)
+    model.summary()
+    return model
+
+def build_efficient_net(input_shape, output_shape, config=None):
+    efficient_net = tf.keras.applications.EfficientNetB0(include_top=False, input_shape=input_shape)
+
+    t = Flatten()(efficient_net.output)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Dense(config.fc_layer_size, kernel_initializer="he_uniform", activation="relu")(t)
+    t = BatchNormalization(momentum=0.95)(t)
+    t = Dense(25, kernel_initializer="he_uniform", activation="relu", name="predictions")(t)
+    output = Reshape((5,5))(t)
+
+    model = Model(efficient_net.input, output)
+    model.summary()
+    return model
+
 def build_model_no_config(input_shape, output_shape):
     inputs = Input(input_shape)
     t = inputs
@@ -110,7 +181,8 @@ def find_lr_range(x, y):
     plt.show()
 
 if __name__ == "__main__":
-    from create_data import *
-    with open("data/200k.pkl", "rb") as f:
-        x, y = pkl.load(f)
-    find_lr_range(x, y)
+    #from create_data import *
+    #with open("data/200k.pkl", "rb") as f:
+    #    x, y = pkl.load(f)
+    #find_lr_range(x, y)
+    build_efficient_net((72,32,3), (5,5))

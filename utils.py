@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-import cv2, numpy as np, matplotlib.pyplot as plt, tensorflow as tf, pandas as pd
+import cv2, numpy as np, tensorflow as tf, pandas as pd
 from itertools import product
 from functools import reduce
 from PIL import Image
 import ROOT
 
+#import matplotlib
+#matplotlib.use('TkAgg')
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('Qt5Agg')
+import matplotlib.pyplot as plt
 
 def get_data(rootfile, index):
     f = ROOT.TFile.Open(rootfile)
@@ -43,11 +46,15 @@ def plot_single_event(X, Y, scaling=10):
 def display_images(M, N, images, n_plots):
     plt.rcParams['figure.figsize'] = [20, 10]
     plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
+    yticks = np.array([0,10,20,30,40,50,60,70])
+    xticks = np.array([0,10,20,30])
     for n in range(n_plots):
         fig, ax = plt.subplots(M,N)
         #for i, img in zip(product(range(M),range(N)), images[n*M*N:n*M*N + M*N]):
         for i, img in enumerate(images[n*M*N:n*M*N + M*N]):
             ax[i].imshow(img)
+            ax[i].set_yticks(yticks, yticks)
+            ax[i].set_xticks(xticks, xticks)
         plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -104,3 +111,18 @@ def filter_events(x, y):
     indices = reduce(np.intersect1d, (indices1, indices2, indices3, indices4)) # combine all filters
 
     return x[indices], y[indices] # return filtered images with corresponding parameters
+
+if __name__ == '__main__':
+    font = {'family' : 'normal',
+            'size'   : 16}
+    matplotlib.rc('font', **font)
+    plt.rc('lines', linewidth = 4)
+
+    sim_x = np.array(loadFeatures("data/features.csv"))
+    ideal_hough_y = loadParameters("data/targets_ring.csv")
+    sim_x, ideal_hough_y = filter_events(sim_x, ideal_hough_y) # filter events with incorrectly fitted rings
+    ideal_hough_y = ideal_hough_y.reshape(ideal_hough_y.shape[0], 5, 5)
+
+    hough = np.array([plot_single_event(sim_x[i], ideal_hough_y[i]) for  i in range(sim_x.shape[0])])
+    display_images(1,5, sim_x[10:20], 1)
+    display_images(1,5, hough[10:20], 1)

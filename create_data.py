@@ -42,9 +42,9 @@ class DataGen(tf.keras.utils.Sequence):
         Y = list()
         Z = np.zeros((size))
         #B = np.zeros((size, 20, 5)) # ground truth boxes
-        for i in range(size):# tqdm(range(size)):
+        for i in tqdm(range(size)):
             x = Display(self.ins)
-            nof_rings = choice(range(0,4))
+            nof_rings = choice(range(0,3))
             x.add_ellipses(nof_rings, (self.minhits, self.maxhits), self.rn, choice(range(0,3)))
             y = x.params
             #b = x.bboxes
@@ -142,7 +142,7 @@ class Display(np.ndarray):
 
 def create_dataset(size, show_samples=True):
     path = f'data/{int(size/1000)}k'
-    ins = (72,32,1)
+    ins = (72,32,3)
     print("Creating datasets...")
     gen = DataGen(ins, (12, 25), 0.08)
     X, Y = gen.create_dataset(size)
@@ -157,7 +157,7 @@ def create_dataset(size, show_samples=True):
 if __name__ == "__main__":
     import matplotlib
     matplotlib.use('TkAgg')
-    create_dataset(200)
+    create_dataset(10000)
 
     #with open(path + ".pkl", "rb") as f:
     #    x, y, z = pkl.load(f)

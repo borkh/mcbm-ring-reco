@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import datetime, os
+import datetime, os, cv2
 import tensorflow as tf, pickle as pkl, numpy as np
 from wandb.keras import WandbCallback
 from tensorflow.keras.optimizers import Adam, SGD
@@ -32,7 +32,8 @@ def train_with_dataset(conf=None):
         wandb.run.log_code(".")
         conf = wandb.config
         # build model ------------------------------------------------------------
-        model = build_model(conf.input_shape, conf.output_shape, conf)
+        model = build_model2(conf.input_shape, conf.output_shape, conf)
+        #model = build_efficient_net(conf.input_shape, conf.output_shape, conf)
         vs = 0.1
         spe = len(x) * (1-vs) / conf.batch_size # calculate steps per epoch
         steps = spe * conf.epochs
@@ -85,4 +86,4 @@ def train_with_generator(conf=None):
 
 if __name__ == "__main__":
     sweep_id = wandb.sweep(run_config, project='ring-finder')
-    wandb.agent(sweep_id, train_with_generator, count=1)
+    wandb.agent(sweep_id, train_with_dataset, count=1)
