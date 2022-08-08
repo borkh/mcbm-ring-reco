@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import cv2, numpy as np, tensorflow as tf, pandas as pd
+import cv2, numpy as np, tensorflow as tf, pandas as pd, pickle as pkl
 from itertools import product
 from functools import reduce
 from PIL import Image
@@ -29,17 +29,31 @@ def plot_root(path):
 # %%
 # functions for plotting
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def plot_single_event(X, Y, scaling=10):
+def plot_single_event(X, Y1=None, Y2=None,  scaling=10):
     X = cv2.resize(X, (X.shape[1]*scaling,
                        X.shape[0]*scaling),
                    interpolation=cv2.INTER_AREA)
 
     # iterate over all rings
-    for ring in (Y*scaling).astype(int):
-        X = cv2.ellipse(X, (ring[0], ring[1]),
-                           (ring[2], ring[3]),
-                           ring[4] + 90, 0, 360,
-                           (1,1,0), 2)
+    if Y1 is not None:
+        for ring in (Y1*scaling).astype(int):
+            try:
+                X = cv2.ellipse(X, (ring[0], ring[1]),
+                                   (ring[2], ring[3]),
+                                   ring[4] + 90, 0, 360,
+                                   (0,1,0), 2)
+            except cv2.error as e:
+                print(e)
+
+    if Y2 is not None:
+        for ring in (Y2*scaling).astype(int):
+            try:
+                X = cv2.ellipse(X, (ring[0], ring[1]),
+                                   (ring[2], ring[3]),
+                                   ring[4] + 90, 0, 360,
+                                   (1,1,0), 2)
+            except cv2.error as e:
+                print(e)
 
     return X
 
@@ -91,11 +105,14 @@ def loadParameters(datafile):
         line.remove("")
         line = np.array([float(x) for x in line])
         for j, par in enumerate(line):
-            params[i,j] = np.round(par, 2)
+            try:
+                params[i,j] = np.round(par, 2)
+            except IndexError as e:
+                print(e)
     return params
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def filter_events(x, y):
+def filter_events(y):
     cond1 = np.all(~np.isnan(y), axis=1) # remove events with NaN in parameters
     cond2 = np.invert(np.all(y == 0., axis=1)) # remove events with only zeros as parameters
 
@@ -108,46 +125,64 @@ def filter_events(x, y):
     indices5 = np.where(y[:,15] >= 0.)[0]
     indices5 = np.where(y[:,20] >= 0.)[0]
 
-    indices = reduce(np.intersect1d, (indices1, indices2, indices3, indices4)) # combine all filters
+    indices6 = np.where(y[:,2] <= 20.)[0]
+    indices7 = np.where(y[:,7] <= 20.)[0]
+    indices8 = np.where(y[:,12] <= 20.)[0]
+    indices9 = np.where(y[:,17] <= 20.)[0]
+    indices10 = np.where(y[:,22] <= 20.)[0]
 
-    return x[indices], y[indices] # return filtered images with corresponding parameters
+    indices = reduce(np.intersect1d, (indices1, indices2, indices3, indices4, indices5,
+                                      indices6, indices7, indices8, indices9, indices10)) # combine all filters
+
+    return indices # return filtered images with corresponding parameters
 
 if __name__ == '__main__':
     font = {'family' : 'normal',
-            'size'   : 16}
+            'size'   : 12}
     matplotlib.rc('font', **font)
     plt.rc('lines', linewidth = 4)
 
-    import pickle as pkl
-    with open("data/1k.pkl", "rb") as f:
-        x, y = pkl.load(f)
-        x = np.array([cv2.merge((a,a,a)) for a in x])
+    mse = tf.keras.losses.MeanSquaredError()
+    mae = tf.keras.losses.MeanAbsoluteError()
 
-    """
-    sim = np.array(loadFeatures("data/features_no_denoise.csv"))
-    sim_denoise = np.array(loadFeatures("data/features_denoise.csv"))
-    # convert to 3 channel images
+    with open('data/sim+idealhough+hough+cnn.pkl', 'rb') as f:
+        sim, idealhough, hough, cnn = pkl.load(f)
     sim = np.array([cv2.merge((a,a,a)) for a in sim])
-    sim_denoise = np.array([cv2.merge((a,a,a)) for a in sim_denoise])
 
-    ideal_hough_y = loadParameters("data/targets_ring_hough_ideal.csv")
+    # calulate errors
+    #print(mse(cnn, idealhough).numpy())
+    #print(mse(hough, idealhough).numpy())
 
-    sim, _ = filter_events(sim, ideal_hough_y) # filter events with incorrectly fitted rings
-    sim_denoise, ideal_hough_y = filter_events(sim_denoise, ideal_hough_y) # filter events with incorrectly fitted rings
+    # create ring fits ---------------
+    #idealhough_fit = np.array([plot_single_event(x, y1) for x,y1 in zip(sim[:50], idealhough[:50])])
+    #cnn_fit = np.array([plot_single_event(x, y1) for x,y1 in zip(sim[:50], cnn[:50])])
 
-    print(len(sim))
-    print(len(sim_denoise))
-    ideal_hough_y = ideal_hough_y.reshape(ideal_hough_y.shape[0], 5, 5)
+    #cnn_vs_idealhough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[:50], cnn[:50], idealhough[:50])])
+    #cnn_vs_hough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[:50], cnn[:50], hough[:50])])
+    #hough_vs_idealhough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[:50], hough[:50], idealhough[:50])])
 
-    hough = np.array([plot_single_event(sim_denoise[i], ideal_hough_y[i]) for  i in range(sim_denoise.shape[0])])
-    """
-    true_fit = np.array([plot_single_event(x[i][:100], y[i][:100]) for  i in range(100)])
+    #display_images(2,5,cnn_fit,5,10)
+    #display_images(3,5,cnn_vs_idealhough,5,10)
+    #display_images(3,5,cnn_vs_hough,5,10)
+    #---------------------------------
+    n_rings_cnn = []
+    for y in cnn:
+        n = len(np.where(np.invert(np.all(y == 0., axis=1)))[0])
+        n_rings_cnn.append(len(np.where(np.invert(np.all(y == 0., axis=1)))[0]))
+        if n > 4:
+            print(y)
+
+    n_rings_idealhough = []
+    for y in idealhough:
+        n_rings_idealhough.append(len(np.where(np.invert(np.all(y == 0., axis=1)))[0]))
+
+    n_rings_hough = []
+    for y in hough:
+        n_rings_hough.append(len(np.where(np.invert(np.all(y == 0., axis=1)))[0]))
 
 
-#    display_images(1, 5, x[:100], 5)
-    display_images(2, 5, x[:100], 5, 1)
-    display_images(2, 5, true_fit[:100], 5, 10)
-    #for i in range(10):
-        #display_images(1, 5, sim[i*5:i*5+5], 1)
-        #display_images(1, 5, sim_denoise[i*5:i*5+5], 1)
-        #display_images(1, 5, hough[i*5:i*5+5], 1, 10)
+    fig, ax = plt.subplots(1,3)
+    ax[0].hist(n_rings_cnn, bins=4)
+    ax[1].hist(n_rings_idealhough, bins=5)
+    ax[2].hist(n_rings_hough, bins=5)
+    plt.show()
