@@ -44,8 +44,8 @@ class DataGen(tf.keras.utils.Sequence):
         #B = np.zeros((size, 20, 5)) # ground truth boxes
         for i in tqdm(range(size)):
             x = Display(self.ins)
-            nof_rings = choice(range(0,3))
-            x.add_ellipses(nof_rings, (self.minhits, self.maxhits), self.rn, choice(range(0,3)))
+            nof_rings = choice(range(1,4), p=[0.4,0.4,0.2])
+            x.add_ellipses(nof_rings, (self.minhits, self.maxhits), self.rn, choice(range(0,5)))
             y = x.params
             #b = x.bboxes
             X[i] += x
@@ -97,7 +97,7 @@ class Display(np.ndarray):
         while n < nof_rings:
             xshift, yshift = indices[n] % self.shape[1], int(indices[n]/self.shape[1]) # shift the ellipses based on their index
             nod = 20 # number of hits that will be deleted
-            hits, r = np.random.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(3.5,9.0), 1)
+            hits, r = np.random.randint(hpr[0] + nod, hpr[1] + nod), round(np.random.uniform(4.0,8.0), 1)
             X, y = make_circles(noise=rn, factor=.1, n_samples=(hits, 0))
 
             major, minor = r, r # create rings (major and minor used for possibilty of creating ellipses)
@@ -142,7 +142,7 @@ class Display(np.ndarray):
 
 def create_dataset(size, show_samples=True):
     path = f'data/{int(size/1000)}k'
-    ins = (72,32,3)
+    ins = (72,32,1)
     print("Creating datasets...")
     gen = DataGen(ins, (12, 25), 0.08)
     X, Y = gen.create_dataset(size)
@@ -157,7 +157,7 @@ def create_dataset(size, show_samples=True):
 if __name__ == "__main__":
     import matplotlib
     matplotlib.use('TkAgg')
-    create_dataset(10000)
+    create_dataset(1000)
 
     #with open(path + ".pkl", "rb") as f:
     #    x, y, z = pkl.load(f)

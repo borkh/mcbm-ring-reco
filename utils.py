@@ -39,22 +39,22 @@ def plot_single_event(X, Y, scaling=10):
         X = cv2.ellipse(X, (ring[0], ring[1]),
                            (ring[2], ring[3]),
                            ring[4] + 90, 0, 360,
-                           (1,1,1), 2)
+                           (1,1,0), 2)
 
     return X
 
-def display_images(M, N, images, n_plots):
+def display_images(M, N, images, n_plots, scaling=1):
     plt.rcParams['figure.figsize'] = [20, 10]
     plt.rcParams['figure.dpi'] = 100 # 200 e.g. is really fine, but slower
     yticks = np.array([0,10,20,30,40,50,60,70])
     xticks = np.array([0,10,20,30])
     for n in range(n_plots):
         fig, ax = plt.subplots(M,N)
-        #for i, img in zip(product(range(M),range(N)), images[n*M*N:n*M*N + M*N]):
-        for i, img in enumerate(images[n*M*N:n*M*N + M*N]):
+        for i, img in zip(product(range(M),range(N)), images[n*M*N:n*M*N + M*N]):
+        #for i, img in enumerate(images[n*M*N:n*M*N + M*N]):
             ax[i].imshow(img)
-            ax[i].set_yticks(yticks, yticks)
-            ax[i].set_xticks(xticks, xticks)
+            ax[i].set_yticks(yticks*scaling, yticks)
+            ax[i].set_xticks(xticks*scaling, xticks)
         plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -118,11 +118,36 @@ if __name__ == '__main__':
     matplotlib.rc('font', **font)
     plt.rc('lines', linewidth = 4)
 
-    sim_x = np.array(loadFeatures("data/features.csv"))
-    ideal_hough_y = loadParameters("data/targets_ring.csv")
-    sim_x, ideal_hough_y = filter_events(sim_x, ideal_hough_y) # filter events with incorrectly fitted rings
+    import pickle as pkl
+    with open("data/1k.pkl", "rb") as f:
+        x, y = pkl.load(f)
+        x = np.array([cv2.merge((a,a,a)) for a in x])
+
+    """
+    sim = np.array(loadFeatures("data/features_no_denoise.csv"))
+    sim_denoise = np.array(loadFeatures("data/features_denoise.csv"))
+    # convert to 3 channel images
+    sim = np.array([cv2.merge((a,a,a)) for a in sim])
+    sim_denoise = np.array([cv2.merge((a,a,a)) for a in sim_denoise])
+
+    ideal_hough_y = loadParameters("data/targets_ring_hough_ideal.csv")
+
+    sim, _ = filter_events(sim, ideal_hough_y) # filter events with incorrectly fitted rings
+    sim_denoise, ideal_hough_y = filter_events(sim_denoise, ideal_hough_y) # filter events with incorrectly fitted rings
+
+    print(len(sim))
+    print(len(sim_denoise))
     ideal_hough_y = ideal_hough_y.reshape(ideal_hough_y.shape[0], 5, 5)
 
-    hough = np.array([plot_single_event(sim_x[i], ideal_hough_y[i]) for  i in range(sim_x.shape[0])])
-    display_images(1,5, sim_x[10:20], 1)
-    display_images(1,5, hough[10:20], 1)
+    hough = np.array([plot_single_event(sim_denoise[i], ideal_hough_y[i]) for  i in range(sim_denoise.shape[0])])
+    """
+    true_fit = np.array([plot_single_event(x[i][:100], y[i][:100]) for  i in range(100)])
+
+
+#    display_images(1, 5, x[:100], 5)
+    display_images(2, 5, x[:100], 5, 1)
+    display_images(2, 5, true_fit[:100], 5, 10)
+    #for i in range(10):
+        #display_images(1, 5, sim[i*5:i*5+5], 1)
+        #display_images(1, 5, sim_denoise[i*5:i*5+5], 1)
+        #display_images(1, 5, hough[i*5:i*5+5], 1, 10)

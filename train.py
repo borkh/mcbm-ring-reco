@@ -19,13 +19,13 @@ for gpu in gpus:
 
 def train_with_dataset(conf=None):
     # define model name ---------------------------------------------------------
-    name, now = "200k", datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name, now = "200k-final", datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = "models/checkpoints/{}-{}.model".format(name, now)
 
     # define callbacks ----------------------------------------------------------
     mc = tf.keras.callbacks.ModelCheckpoint(model_path, monitor="val_loss", save_best_only=False)
     # load data _______----------------------------------------------------------
-    with open("data/200k.pkl", "rb") as f:
+    with open("data/200k-final.pkl", "rb") as f:
         x, y = pkl.load(f)
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):
@@ -35,7 +35,7 @@ def train_with_dataset(conf=None):
         model = build_model2(conf.input_shape, conf.output_shape, conf)
         #model = build_efficient_net(conf.input_shape, conf.output_shape, conf)
         vs = 0.1
-        spe = len(x) * (1-vs) / conf.batch_size # calculate steps per epoch
+        spe = len(x) / conf.batch_size # calculate steps per epoch
         steps = spe * conf.epochs
 
         # learning rate schedule ------------------------------------------------------------
@@ -49,6 +49,7 @@ def train_with_dataset(conf=None):
         model.fit(x, y, validation_split=vs,
                   epochs=conf.epochs, batch_size=conf.batch_size,
                   callbacks=[WandbCallback(), mc, lr_schedule])
+        lr_schedule.plot()
 
 def train_with_generator(conf=None):
     try:
