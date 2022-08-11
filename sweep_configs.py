@@ -21,7 +21,7 @@ run_config = dict(
                     phase0perc =            dict(value=0.3),
 
                     # epochs
-                    epochs =                dict(value=20),
+                    epochs =                dict(value=5),
                     batch_size =            dict(value=200),
 
                     # conv2D parameters
@@ -30,7 +30,7 @@ run_config = dict(
                     conv_kernel_size =      dict(value=3),
 
                     # fully connected layer parameters
-                    fc_layer_size =         dict(value=64),
+                    fc_layer_size =         dict(value=512),
                     fc_activation =         dict(value="relu"),
 
                     # shapes

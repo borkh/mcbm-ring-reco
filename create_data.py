@@ -44,8 +44,8 @@ class DataGen(tf.keras.utils.Sequence):
         #B = np.zeros((size, 20, 5)) # ground truth boxes
         for i in tqdm(range(size)):
             x = Display(self.ins)
-            nof_rings = choice(range(1,4), p=[0.4,0.4,0.2])
-            x.add_ellipses(nof_rings, (self.minhits, self.maxhits), self.rn, choice(range(0,5)))
+            nof_rings = choice(range(1,5))
+            x.add_ellipses(nof_rings, (self.minhits, self.maxhits), self.rn, choice(range(4,10)))
             y = x.params
             #b = x.bboxes
             X[i] += x
@@ -141,10 +141,10 @@ class Display(np.ndarray):
             self.__add_noise(nof_noise_hits)
 
 def create_dataset(size, show_samples=True):
-    path = f'data/{int(size/1000)}k'
+    path = f'data/{int(size/1000)}k-noisy'
     ins = (72,32,1)
     print("Creating datasets...")
-    gen = DataGen(ins, (12, 25), 0.08)
+    gen = DataGen(ins, (12, 25), 0.04)
     X, Y = gen.create_dataset(size)
     with open(path + ".pkl", "wb") as f:
         pkl.dump([X, Y], f)
@@ -157,7 +157,7 @@ def create_dataset(size, show_samples=True):
 if __name__ == "__main__":
     import matplotlib
     matplotlib.use('TkAgg')
-    create_dataset(1000)
+    create_dataset(200000)
 
     #with open(path + ".pkl", "rb") as f:
     #    x, y, z = pkl.load(f)

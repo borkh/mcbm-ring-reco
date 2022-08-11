@@ -126,14 +126,35 @@ def filter_events(y):
     indices5 = np.where(y[:,15] >= 0.)[0]
     indices5 = np.where(y[:,20] >= 0.)[0]
 
-    indices6 = np.where(y[:,2] <= 20.)[0]
-    indices7 = np.where(y[:,7] <= 20.)[0]
-    indices8 = np.where(y[:,12] <= 20.)[0]
-    indices9 = np.where(y[:,17] <= 20.)[0]
-    indices10 = np.where(y[:,22] <= 20.)[0]
+    indices6 = np.where(y[:,0] <= 72.)[0]
+    indices7 = np.where(y[:,5] <= 72.)[0]
+    indices8 = np.where(y[:,10] <= 72.)[0]
+    indices9 = np.where(y[:,15] <= 72.)[0]
+    indices10 = np.where(y[:,20] <= 72.)[0]
+
+    indices11 = np.where(y[:,1] >= 0.)[0]
+    indices12 = np.where(y[:,6] >= 0.)[0]
+    indices13 = np.where(y[:,11] >= 0.)[0]
+    indices14 = np.where(y[:,16] >= 0.)[0]
+    indices15 = np.where(y[:,21] >= 0.)[0]
+
+    indices16 = np.where(y[:,1] <= 72.)[0]
+    indices17 = np.where(y[:,6] <= 72.)[0]
+    indices18 = np.where(y[:,11] <= 72.)[0]
+    indices19 = np.where(y[:,16] <= 72.)[0]
+    indices20 = np.where(y[:,21] <= 72.)[0]
+
+    indices21 = np.where(y[:,2] <= 20.)[0]
+    indices22 = np.where(y[:,7] <= 20.)[0]
+    indices23 = np.where(y[:,12] <= 20.)[0]
+    indices24 = np.where(y[:,17] <= 20.)[0]
+    indices25 = np.where(y[:,22] <= 20.)[0]
 
     indices = reduce(np.intersect1d, (indices1, indices2, indices3, indices4, indices5,
-                                      indices6, indices7, indices8, indices9, indices10)) # combine all filters
+                                      indices6, indices7, indices8, indices9, indices10,
+                                      indices11, indices12, indices13, indices14, indices15,
+                                      indices16, indices17, indices18, indices19, indices20,
+                                      indices21, indices22, indices23, indices24, indices25)) # combine all filters
 
     return indices # return filtered images with corresponding parameters
 
@@ -143,7 +164,7 @@ if __name__ == '__main__':
     matplotlib.rc('font', **font)
     plt.rc('lines', linewidth = 4)
 
-    from sklearn.metrics import mean_squared_error
+    from sklearn.metrics import mean_squared_error as mse
 
     mse = tf.keras.losses.MeanSquaredError()
     mae = tf.keras.losses.MeanAbsoluteError()
@@ -171,20 +192,28 @@ if __name__ == '__main__':
                                 r1: {mse(cnn[:,:,2],hough[:,:,2]).numpy()}
                                 r2: {mse(cnn[:,:,3],hough[:,:,3]).numpy()}''')
 
+
+
     # %%
     # create ring fits
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #idealhough_fit = np.array([plot_single_event(x, y1) for x,y1 in zip(sim[:50], idealhough[:50])])
     #cnn_fit = np.array([plot_single_event(x, y1) for x,y1 in zip(sim[:50], cnn[:50])])
 
-    #cnn_vs_idealhough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[:50], cnn[:50], idealhough[:50])])
-    #cnn_vs_hough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[:50], cnn[:50], hough[:50])])
+    cnn_vs_idealhough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim, cnn, idealhough)])
+    cnn_vs_hough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim, cnn, hough)])
     #hough_vs_idealhough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[:50], hough[:50], idealhough[:50])])
 
     #display_images(2,5,cnn_fit,5,10)
-    #display_images(3,5,cnn_vs_idealhough,5,10)
+    #display_images(4,5,cnn_vs_idealhough,20,10)
     #display_images(3,5,cnn_vs_hough,5,10)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    y1, y2 = cnn, hough
+    for i in range(len(sim)):
+        if mse(y1[i],y2[i]) > 2.:
+            plt.imshow(cnn_vs_hough[i])
+            plt.show()
 
     # %%
     # plot histograms
