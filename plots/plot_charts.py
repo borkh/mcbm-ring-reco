@@ -9,7 +9,7 @@ font = {'family' : 'normal',
 
 matplotlib.rc('font', **font)
 matplotlib.rcParams['lines.linewidth'] = 4
-matplotlib.rcParams['axes.linewidth'] = 0
+matplotlib.rcParams['axes.linewidth'] = 1
 
 #df = pd.read_csv("wandb_export_2022-05-05T14_45_43.219+02_00.csv", header=0)
 #df = pd.read_csv("wandb_export_2022-08-08T10_07_31.637+02_00.csv", header=0)
