@@ -30,7 +30,7 @@ def plot_root(path):
 # %%
 # functions for plotting
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def plot_single_event(X, Y1=None, Y2=None, Y3=None, Y4=None, scaling=10):
+def plot_single_event(X, Y1=None, Y2=None,  scaling=10):
     X = cv2.resize(X, (X.shape[1]*scaling,
                        X.shape[0]*scaling),
                    interpolation=cv2.INTER_AREA)
@@ -53,26 +53,6 @@ def plot_single_event(X, Y1=None, Y2=None, Y3=None, Y4=None, scaling=10):
                                    (ring[2], ring[3]),
                                    ring[4] + 90, 0, 360,
                                    (1,1,0), 2)
-            except cv2.error as e:
-                print(e)
-
-    if Y3 is not None:
-        for ring in (Y3*scaling).astype(int):
-            try:
-                X = cv2.ellipse(X, (ring[0], ring[1]),
-                                   (ring[2], ring[3]),
-                                   ring[4] + 90, 0, 360,
-                                   (0,1,1), 2)
-            except cv2.error as e:
-                print(e)
-
-    if Y4 is not None:
-        for ring in (Y4*scaling).astype(int):
-            try:
-                X = cv2.ellipse(X, (ring[0], ring[1]),
-                                   (ring[2], ring[3]),
-                                   ring[4] + 90, 0, 360,
-                                   (1,0,0), 2)
             except cv2.error as e:
                 print(e)
 
@@ -194,35 +174,32 @@ if __name__ == '__main__':
     #print(mse(cnn, idealhough).numpy())
     #print(mse(hough, idealhough).numpy())
 
-    print(f'''\n\nMSE\'s of cnn and idealhough: \t x: {np.sqrt(mse(cnn[:,:,0],idealhough[:,:,0]).numpy())}
-                                 y: {np.sqrt(mse(cnn[:,:,1],idealhough[:,:,1]).numpy())}
-                                r1: {np.sqrt(mse(cnn[:,:,2],idealhough[:,:,2]).numpy())}
-                                r2: {np.sqrt(mse(cnn[:,:,3],idealhough[:,:,3]).numpy())}''')
+    print(f'''\n\nMSE\'s of cnn and idealhough: \t x: {mse(cnn[:,:,0],idealhough[:,:,0]).numpy()}
+                                 y: {mse(cnn[:,:,1],idealhough[:,:,1]).numpy()}
+                                r1: {mse(cnn[:,:,2],idealhough[:,:,2]).numpy()}
+                                r2: {mse(cnn[:,:,3],idealhough[:,:,3]).numpy()}''')
 
-    print(f'''\n\nMSE\'s of idealhough and hough: \t x: {np.sqrt(mse(idealhough[:,:,0],hough[:,:,0]).numpy())}
-                                 y: {np.sqrt(mse(idealhough[:,:,1],hough[:,:,1]).numpy())}
-                                r1: {np.sqrt(mse(idealhough[:,:,2],hough[:,:,2]).numpy())}
-                                r2: {np.sqrt(mse(idealhough[:,:,3],hough[:,:,3]).numpy())}''')
+    print(f'''\n\nMSE\'s of idealhough and hough: \t x: {mse(idealhough[:,:,0],hough[:,:,0]).numpy()}
+                                 y: {mse(idealhough[:,:,1],hough[:,:,1]).numpy()}
+                                r1: {mse(idealhough[:,:,2],hough[:,:,2]).numpy()}
+                                r2: {mse(idealhough[:,:,3],hough[:,:,3]).numpy()}''')
 
-    print(f'''\n\nMSE\'s of cnn and hough: \t x: {np.sqrt(mse(cnn[:,:,0],hough[:,:,0]).numpy())}
-                                 y: {np.sqrt(mse(cnn[:,:,1],hough[:,:,1]).numpy())}
-                                r1: {np.sqrt(mse(cnn[:,:,2],hough[:,:,2]).numpy())}
-                                r2: {np.sqrt(mse(cnn[:,:,3],hough[:,:,3]).numpy())}''')
+    print(f'''\n\nMSE\'s of cnn and hough: \t x: {mse(cnn[:,:,0],hough[:,:,0]).numpy()}
+                                 y: {mse(cnn[:,:,1],hough[:,:,1]).numpy()}
+                                r1: {mse(cnn[:,:,2],hough[:,:,2]).numpy()}
+                                r2: {mse(cnn[:,:,3],hough[:,:,3]).numpy()}''')
 
 
-    with open('/home/robin/cbm-ring-reco/images/sim+pred_images+idealhough+hough+cnn.pkl', 'rb') as f:
-        sim, pred_images, idealhough, hough, cnn2 = pkl.load(f)
 
     # %%
     # create ring fits
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #idealhough_fit = np.array([plot_single_event(x, y1) for x,y1 in zip(sim[:50], idealhough[:50])])
-    #cnn_fit = np.array([plot_single_event(x, y1) for x,y1 in zip(sim[500:1000], cnn[500:1000])])
+    """
+    cnn_fit = np.array([plot_single_event(x, y1) for x,y1 in zip(sim[500:1000], cnn[500:1000])])
 
-    #cnn_vs_idealhough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[500:1000], cnn[500:1000], idealhough[500:1000])])
+    cnn_vs_idealhough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[500:1000], cnn[500:1000], idealhough[500:1000])])
     #cnn_vs_hough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[:500], cnn[:500], hough[:500])])
-
-    #all_fits = np.array([plot_single_event(x,y1,y2,y3,y4) for x,y1,y2,y3,y4 in zip(sim[:], cnn[:], idealhough[:], hough[:], cnn2[:])])
     #hough_vs_idealhough = np.array([plot_single_event(x,y1,y2) for x,y1,y2 in zip(sim[:50], hough[:50], idealhough[:50])])
 
     #display_images(2,5,cnn_fit,5,10)
@@ -233,30 +210,22 @@ if __name__ == '__main__':
     # %%
     # plot bad ring fits
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
     bad_cnn_fits = []
     bad_cnn_idx = []
-    y1, y2 = cnn, hough
-    for i in range(len(sim)):
-        #err = mse(y1[i],y2[i]).numpy()
-        if True: #err > 2.:
-            bad_cnn_fits.append(all_fits[i])
+    y1, y2 = cnn, idealhough
+    for i in range(500):
+        err = mse(y1[i,:,0],y2[i,:,0]).numpy()
+        if err > 30.:
+            print(y1[i,:,0], y2[i,:,0])
+            print(mse(y1[i],y2[i]).numpy())
+            bad_cnn_fits.append(cnn_vs_idealhough[i])
             bad_cnn_idx.append(i)
-    display_images(2,5,bad_cnn_fits,100,10)
+    display_images(2,5,bad_cnn_fits,5,10)
     """
-    fig, ax = plt.subplots(1,5)
-    for i, n in enumerate([1,3,4,5,6]):
-        img = Image.open(f'/home/robin/thesis/bad_event{n}.png')
-        ax[i].imshow(img)
-        ax[i].axis('off')
-    plt.show()
-
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # %%
     # plot histograms
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
     n_rings_cnn = []
     for y in cnn:
         n = len(np.where(np.invert(np.all(y == 0., axis=1)))[0])
@@ -275,7 +244,13 @@ if __name__ == '__main__':
         if n <= 4:
             n_rings_hough.append(n)
 
-
+    plt.hist(n_rings_cnn, bins=range(6), align='left', histtype='step', linewidth=6)
+    plt.hist(n_rings_idealhough, bins=range(6), align='left', histtype='step', linewidth=6)
+    plt.hist(n_rings_hough, bins=range(6), align='left', histtype='step', linewidth=6)
+    plt.ylabel('count')
+    plt.xlabel('number of rings per event')
+    plt.show()
+    """
     fig, ax = plt.subplots(1,3)
     ax[0].hist(n_rings_cnn, bins=4)
     ax[0].set_ylabel('number of rings per event')
