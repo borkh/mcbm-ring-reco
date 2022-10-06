@@ -10,6 +10,21 @@ font = {'family' : 'normal',
 matplotlib.rc('font', **font)
 matplotlib.rcParams['lines.linewidth'] = 4
 
+lrs, moms = np.load('1cycle.npy')
+
+ax = plt.subplot(1,2,1)
+ax.plot(lrs)
+ax.set_ylabel('learning rate')
+ax.set_xlabel('epoch')
+ax.set_xticks([0,45,90,135], [0,5,10,15])
+
+ax = plt.subplot(1,2,2)
+ax.plot(moms)
+ax.set_ylabel('momentum')
+ax.set_xlabel('epoch')
+ax.set_xticks([0,45,90,135], [0,5,10,15])
+plt.show()
+
 # %%
 # plot ring regressor loss and accuracy
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -53,7 +68,6 @@ plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-"""
 # %%
 # plot detection losses
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,4 +119,3 @@ plt.ylabel("learning rate")
 plt.xlabel("steps")
 plt.show()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-"""

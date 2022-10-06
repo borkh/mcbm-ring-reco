@@ -24,14 +24,17 @@ if __name__ == '__main__':
     hough = hough.reshape(hough.shape[0],5,5)
 
     # run predictions
-    model = tf.keras.models.load_model('models/checkpoints/200k-final-202208071623.model')
+    #model = tf.keras.models.load_model('models/checkpoints/200k-final-202208071623.model')
+    model = tf.keras.models.load_model('models/autoencoder_regressor_mcbm.model')
     star_time = time.time()
 
-    cnn = model.predict(sim)
+    #cnn = model.predict(sim)
+    cnn, _ = model.predict(sim)
+    print(cnn.shape)
 
     end_time = time.time()
     elapsed_time = end_time - star_time
     print(f'Predicting {len(sim)} events took a total of {elapsed_time}s ({elapsed_time/len(sim)}s per event)')
 
-    with open("data/sim+idealhough+hough+cnn.pkl", "wb") as f:
+    with open("data/sim+idealhough+hough+cnn_autoencoder.pkl", "wb") as f:
         pkl.dump([sim,idealhough,hough,cnn], f)
