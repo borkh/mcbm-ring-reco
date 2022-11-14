@@ -23,7 +23,8 @@ def train(conf=None):
     # define callbacks ----------------------------------------------------------
     mc = tf.keras.callbacks.ModelCheckpoint(model_path, monitor="val_loss", save_best_only=False)
     # load data _______----------------------------------------------------------
-    x, y = np.load('data/100k.npz')['arr_0'], np.load('data/100k.npz')['arr_1']
+    with open('data/10k-fixed.pkl', 'rb') as f:
+        x, y = pkl.load(f)
     # initialize agent ----------------------------------------------------------
     with wandb.init(config=None):
         wandb.run.log_code(".")

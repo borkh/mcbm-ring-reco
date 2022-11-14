@@ -1,8 +1,6 @@
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-from torchvision import datasets, transforms
 
 from torchsummary import summary
 import numpy as np
@@ -86,19 +84,16 @@ model = CNN().to(device)
 #model = Autoencoder().to(device)
 summary(model, (1, 72, 32))
 
-batch_size = 32
-train_loader = DataLoader(train_set, batch_size, shuffle=True)
-test_loader = DataLoader(test_set, batch_size, shuffle=True)
 
 #%%
-epochs = 100
+epochs = 30
 loss_fn = [nn.MSELoss(), nn.BCELoss()]
 
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
-scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.1, steps_per_epoch=len(train_loader), epochs=epochs)
+scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.1, steps_per_epoch=len(train_dl), epochs=epochs)
 
 for t in range(epochs):
     print(f"Epoch {t+1}/{epochs}\n-------------------------------")
-    train(train_loader, model, loss_fn[0], optimizer)
-    test(test_loader, model, loss_fn[0])
+    train(train_dl, model, loss_fn[0], optimizer)
+    test(valid_dl, model, loss_fn[0])
 print("Done!")

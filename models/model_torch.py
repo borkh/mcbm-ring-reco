@@ -3,10 +3,13 @@ from torch import nn
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        initial_filters = 8
+        initial_filters = 64
         self.network = nn.Sequential(
 
                 nn.Conv2d(1, initial_filters, 3, padding="same"),
+                nn.BatchNorm2d(initial_filters),
+                nn.ReLU(),
+                nn.Conv2d(initial_filters, initial_filters, 3, padding="same"),
                 nn.BatchNorm2d(initial_filters),
                 nn.ReLU(),
                 nn.MaxPool2d(2),
@@ -14,9 +17,15 @@ class CNN(nn.Module):
                 nn.Conv2d(initial_filters, initial_filters*2, 3, padding="same"),
                 nn.BatchNorm2d(initial_filters*2),
                 nn.ReLU(),
+                nn.Conv2d(initial_filters*2, initial_filters*2, 3, padding="same"),
+                nn.BatchNorm2d(initial_filters*2),
+                nn.ReLU(),
                 nn.MaxPool2d(2),
 
                 nn.Conv2d(initial_filters*2, initial_filters*4, 3, padding="same"),
+                nn.BatchNorm2d(initial_filters*4),
+                nn.ReLU(),
+                nn.Conv2d(initial_filters*4, initial_filters*4, 3, padding="same"),
                 nn.BatchNorm2d(initial_filters*4),
                 nn.ReLU(),
                 nn.MaxPool2d(2),
@@ -24,9 +33,21 @@ class CNN(nn.Module):
                 nn.Conv2d(initial_filters*4, initial_filters*8, 3, padding="same"),
                 nn.BatchNorm2d(initial_filters*8),
                 nn.ReLU(),
+                nn.Conv2d(initial_filters*8, initial_filters*8, 3, padding="same"),
+                nn.BatchNorm2d(initial_filters*8),
+                nn.ReLU(),
+                nn.Conv2d(initial_filters*8, initial_filters*8, 3, padding="same"),
+                nn.BatchNorm2d(initial_filters*8),
+                nn.ReLU(),
                 nn.MaxPool2d(2),
 
                 nn.Conv2d(initial_filters*8, initial_filters*16, 3, padding="same"),
+                nn.BatchNorm2d(initial_filters*16),
+                nn.ReLU(),
+                nn.Conv2d(initial_filters*16, initial_filters*16, 3, padding="same"),
+                nn.BatchNorm2d(initial_filters*16),
+                nn.ReLU(),
+                nn.Conv2d(initial_filters*16, initial_filters*16, 3, padding="same"),
                 nn.BatchNorm2d(initial_filters*16),
                 nn.ReLU(),
                 nn.MaxPool2d(2),
