@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-import pickle as pkl
 import sys
-import time
+import os
 
 import numpy as np
 import plotly.express as px
@@ -10,8 +9,8 @@ from numpy.random import choice
 from sklearn.datasets import make_circles
 from tqdm import tqdm
 
-np.set_printoptions(threshold=sys.maxsize)
-sys.path.append('../')
+sys.path.append('..')
+
 from utils.utils import *  # nopep8
 
 
@@ -23,61 +22,31 @@ def rotate(img, angle=0):
     return img @ rotation_matrix
 
 
-class DataGen(tf.keras.utils.Sequence):
-    def __init__(self, input_shape, hits_per_ring, rn, batch_size=32, steps_per_epoch=1000):
-        self.ins = input_shape
-        self.bs = batch_size
-        self.spe = steps_per_epoch
-        self.minhits = hits_per_ring[0]
-        self.maxhits = hits_per_ring[1]
-        self.rn = rn
-
-    def __getitem__(self, index):
-        return self.create_dataset(self.bs)
-
-    def __len__(self):
-        return self.spe
-
-    def create_dataset(self, size=1000):
-        X: np.ndarray = np.zeros((size, self.ins[0], self.ins[1], self.ins[2]))
-        Y = list()
-        Z = np.zeros((size))
-        for i in tqdm(range(size)):
-            x = Display(self.ins)
-            nof_rings = choice(range(2, 4))
-            x.add_ellipses(nof_rings, (self.minhits, self.maxhits),
-                           self.rn, choice(range(1, 3)))
-            y = x.params
-            X[i] += x
-            Y.append(y)
-            Z[i] += x.nof_rings
-        return X, np.array(Y)
-
-
 class Display(np.ndarray):
-    ee: float
-    minX: float
-    maxX: float
-    minY: float
-    maxY: float
     params: np.ndarray
     positions: np.ndarray
 
-    def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
-                strides=None, order=None, info=None):
-        self = super().__new__(Display, shape, dtype, buffer=np.zeros(shape),
-                               offset=offset, strides=strides, order=order)
-        self.ee = 0
-        self.minX, self.maxX, self.minY, self.maxY = (self.ee,
-                                                      self.shape[0] - self.ee,
-                                                      self.ee,
-                                                      self.shape[1] - self.ee)
-        self.params = np.zeros((5, 5))
-        self.nof_rings = 0
-        self.positions = np.array([(x, y) for x in range(self.shape[0])
-                                  for y in range(self.shape[1])])
-        self.info = info
-        return self
+    def __new__(cls,
+                shape,
+                dtype=float,
+                buffer=None,
+                offset=0,
+                strides=None,
+                order=None,
+                info=None):
+        obj = super().__new__(Display,
+                              shape,
+                              dtype,
+                              buffer=np.zeros(shape),
+                              offset=offset,
+                              strides=strides,
+                              order=order)
+        obj.params = np.zeros((5, 5))
+        obj.nof_rings = 0
+        obj.positions = np.array([(x, y) for x in range(obj.shape[0])
+                                  for y in range(obj.shape[1])])
+        obj.info = info
+        return obj
 
     def __array_finalize__(self, obj):
         if obj is None:
@@ -91,43 +60,10 @@ class Display(np.ndarray):
             self[x, y] = 1
 
     def __get_indices(self, nof_rings):
-        # uncomment to restrict ellipses to center of the display (no extension over the edges)
-        # set area where the centers of the ellipses are allowed to 1
-        self[self.minX:self.maxX, self.minY:self.maxY] = 1
-        # get the indices of that area
-        indices = np.where(self.flatten() == 1)[0]
-        # uncomment to have no restrictions of ellipses centers
-        #indices = range(self.flatten().shape[0])
-        self[:, :] = 0
+        self[:, :] = 0  # set to zeroes in case of multiple calls
+        indices = range(self.flatten().shape[0])
 
-        if nof_rings > 1:
-            while True:
-                # return sorted list of size 'nof_rings' of random indices in that area
-                ids = sorted(choice(indices, size=nof_rings))
-                break_crit = 0
-
-                for n in range(nof_rings-1):
-                    # shift the ellipses based on their index
-                    x2, x1 = divmod(ids[n], self.shape[1])
-                    # shift the ellipses based on their index
-                    y2, y1 = divmod(ids[n+1], self.shape[1])
-                    x = np.array([x1, x2])
-                    y = np.array([y1, y2])
-                    # calculate the euclidean distance between the centers of the ellipses
-                    d = np.linalg.norm(x-y)
-
-                    if d >= 2:
-                        break_crit += 1
-
-                if break_crit < nof_rings - 1:
-                    time.sleep(1)
-                else:
-                    break
-        else:
-            # return sorted list of size 'nof_rings' of random indices in that area
-            ids = sorted(choice(indices, size=nof_rings))
-
-        return ids
+        return sorted(choice(indices, size=nof_rings))
 
     def add_ellipses(self, nof_rings: int, hpr: tuple, rn: float = 0, nof_noise_hits: int = 0):
         indices = self.__get_indices(nof_rings)
@@ -141,8 +77,8 @@ class Display(np.ndarray):
             hits: int = np.random.randint(hpr[0] + nod, hpr[1] + nod)
             r: int = np.round(np.random.uniform(4.0, 8.0), 1)
 
-            X: np.ndarray = np.array(make_circles(
-                noise=rn, factor=.1, n_samples=(hits, 0))[0])
+            X = np.array(make_circles(
+                noise=rn, factor=.1, n_samples=(hits, 0))[0])  # type: ignore
 
             # create rings (major and minor used for possibilty of creating ellipses)
             major, minor = r, r
@@ -185,33 +121,61 @@ class Display(np.ndarray):
             self.__add_noise(nof_noise_hits)
 
 
-def create_dataset(size, name="", save=True, show_samples=True):
+def add_to_dataset(dir_: str = 'test', n: int = 100, append: bool = True):
+    """
+    Add images and labels to dataset
+
+    args:
+        dir_: directory to save the dataset to
+        n: number of images/labels to create
+        append: if True, append to existing dataset
+                if False, remove existing dataset and create new one
+
+    hardcoded parameters:
+        ins: input shape -> (width, height, channels) of event displays
+        nof_rings: range of number of rings in event displays
+        minhits, maxhits: range of number of hits in each ring
+        ringnoise: noise in each ring -> how much the ring points are shifted from a perfect circle
+    """
+
     ins = (72, 32, 1)
-    print("Creating dataset...")
-    gen = DataGen(ins, (12, 25), 0.05)
-    X, y = gen.create_dataset(size)
+    minhits, maxhits = 12, 25
+    ring_noise = 0.05
 
-    if show_samples:
-        # transform X to rgb in order to show coloured ring fits
-        X = np.repeat(X, 3, axis=3)
-        samples = np.array([plot_single_event(x, y) for x, y in zip(X, y)])
-#        fig = px.imshow(samples,
-#                        binary_string=True,
-#                        facet_col=0,
-#                        facet_col_wrap=5,
-#                        height=1500)
-        fig = px.imshow(samples, animation_frame=0, height=800)
-        fig.update_yaxes(tickmode="array",
-                         tickvals=np.array([200, 400, 600]),
-                         ticktext=np.array([20, 40, 60]))
-        fig.update_xaxes(tickmode="array",
-                         tickvals=np.array([100, 300]),
-                         ticktext=np.array([10, 30])).show()
+    range_ = range(0)
+    if append:
+        range_ = range(len(os.listdir(f'{dir_}/X')),
+                       len(os.listdir(f'{dir_}/X')) + n)
+    else:
+        # remove files in dir_/X and dir_/y
+        if input("Are you sure you want to delete the existing dataset? (y/n)") == 'y':
+            for file in os.listdir(f'{dir_}/X'):
+                os.remove(f'{dir_}/X/{file}')
+            for file in os.listdir(f'{dir_}/y'):
+                os.remove(f'{dir_}/y/{file}')
+            range_ = range(n)
 
-    if save:
-        with open(f'{int(size/1000)}k-{name}.pkl', 'wb') as f:
-            pkl.dump([X, y], f)
+    for i in tqdm(range_):
+        nof_rings = choice(range(1, 5))
+        x = Display(ins)
+        x.add_ellipses(nof_rings, (minhits, maxhits),
+                       ring_noise, choice(range(1, 5)))
+        y = np.array(x.params)
+
+        cv2.imwrite(f'{dir_}/X/{i}.png', 255*x)
+        np.savez_compressed(f'{dir_}/y/{i}.npz', y)
+    print(f"Done. Created {n} images inside directory '{dir_}'.")
 
 
 if __name__ == "__main__":
-    create_dataset(20, "fixed19")
+    add_to_dataset(dir_='test', n=1, append=True)
+
+    # load dataset and inspect if it was created correctly
+    X = np.array(
+        [cv2.imread(f'val/X/{i}.png', cv2.IMREAD_GRAYSCALE) for i in range(10)])
+    y = np.array([np.load(f'val/y/{i}.npz')['arr_0'] for i in range(10)])
+    print(X.shape, y.shape)
+    X = np.repeat(X[..., np.newaxis], 3, -1)
+
+    imgs = np.array([plot_single_event(X[i], Y1=y[i]) for i in range(10)])
+    px.imshow(imgs, animation_frame=0).show()
