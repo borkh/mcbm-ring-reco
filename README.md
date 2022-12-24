@@ -76,7 +76,7 @@ pip install -r requirements.txt
     Test first, you can run
     ```
     python train.py --find_lr_range
-    ```.
+    ```
     This will run the LR Range Test and plot the results. The LR Range Test is
     described in Leslie N. Smith's paper "Cyclical Learning Rates for Training
     Neural Networks" (https://arxiv.org/abs/1506.01186).  From the plot the
