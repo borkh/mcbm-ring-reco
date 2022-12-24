@@ -64,11 +64,12 @@ pip install -r requirements.txt
    ```
    python data/create_data.py --target=data/train --n_files=1000 --append=True --visualize=False
    ```
-   Alternatively, the file can be run in an IPython shell and the arguments can
-   be changed manually.
+    Alternatively, the file can be run in an IPython shell and the arguments can
+    be changed manually. Make sure to also populate the `data/test` and
+    `data/val` directories with data before continuing.  
 
 4. Now, the model can be trained by running
-    ``
+    ```
     python train.py --target_dir=data/train
     ``` 
     or by running the file in an IPython shell. If you want to run the LR Range
