@@ -1,85 +1,42 @@
-#!/usr/bin/env python3
-import pickle as pkl, tensorflow as tf, time
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
+import tensorflow as tf
 import time
-
+import plotly.express as px
 from utils.utils import *
-
-save_loc = "data/test.pkl"
-#save_loc = "data/sim+idealhough+hough+cnn_autoencoder.pkl"
-
-def measure_time(func):
-    def wrapper(*args):
-        t = time.time()
-        res = func(*args)
-        print(f'Function took {str(time.time() - t)}s to run.')
-        return res
-    return wrapper
 
 
 @measure_time
-def predict():
-    # load data
-    idealhough = loadParameters("data/targets_ring_hough_ideal.csv")
-    hough = loadParameters("data/targets_ring_hough.csv")
-    sim = np.array(loadFeatures("data/features_denoise.csv"))
+def predict(model, simulation_data):
+    return model.predict(simulation_data)
 
-    # apply some cuts
-    indices = filter_events(idealhough) # filter events with incorrectly fitted rings
-    sim = sim[indices]
-    hough = hough[indices]
-    idealhough = idealhough[indices]
 
-    indices = filter_events(hough) # filter events with incorrectly fitted rings
-    sim = sim[indices]
-    hough = hough[indices]
-    idealhough = idealhough[indices]
+def hough_parameters():
+    # load simulation data
+    idealhough = loadParameters("data/sim_data/targets_ring_hough_ideal.csv")
+    hough = loadParameters("data/sim_data/targets_ring_hough.csv")
+    sim = np.array(loadFeatures("data/sim_data/features_denoise.csv"))
 
-    idealhough = idealhough.reshape(idealhough.shape[0],5,5)
-    hough = hough.reshape(hough.shape[0],5,5)
+    # apply some cuts on both idealhough and hough
+    indices = filter_events(idealhough)
+    indices = filter_events(hough[indices])
 
-    # run predictions
-    model = tf.keras.models.load_model('models/autoencoder_regressor_mcbm.model')
+    sim, idealhough, hough = sim[indices], idealhough[indices], hough[indices]
 
-    cnn, _ = model.predict(sim)
-    print(cnn.shape)
+    idealhough = idealhough.reshape(idealhough.shape[0], 5, 5)
 
-    with open(save_loc, "wb") as f:
-        pkl.dump([sim,idealhough,hough,cnn], f)
+    hough = hough.reshape(hough.shape[0], 5, 5)
+
+    return sim, idealhough, hough
 
 
 if __name__ == '__main__':
-    predict()
-    # load data
-    idealhough = loadParameters("data/targets_ring_hough_ideal.csv")
-    hough = loadParameters("data/targets_ring_hough.csv")
-    sim = np.array(loadFeatures("data/features_denoise.csv"))
+    model_path = 'models/checkpoints/' + '1M-202212232021.model'
+    model = tf.keras.models.load_model(model_path)
 
-    # apply some cuts
-    indices = filter_events(idealhough) # filter events with incorrectly fitted rings
-    sim = sim[indices]
-    hough = hough[indices]
-    idealhough = idealhough[indices]
+    sim, idealhough, hough = (x[:100] for x in hough_parameters())
+    predictions, pred_time = predict(model, sim)
+    print(
+        f'Inference took {pred_time}s to run. {pred_time / len(sim)}s per event')
 
-    indices = filter_events(hough) # filter events with incorrectly fitted rings
-    sim = sim[indices]
-    hough = hough[indices]
-    idealhough = idealhough[indices]
-
-    idealhough = idealhough.reshape(idealhough.shape[0],5,5)
-    hough = hough.reshape(hough.shape[0],5,5)
-
-    # run predictions
-    #model = tf.keras.models.load_model('models/checkpoints/200k-final-202208071623.model')
-    model = tf.keras.models.load_model('models/autoencoder_regressor_mcbm.model')
-    star_time = time.time()
-
-    #cnn = model.predict(sim)
-    cnn, _ = model.predict(sim)
-    print(cnn.shape)
-
-    end_time = time.time()
-    elapsed_time = end_time - star_time
-    print(f'Predicting {len(sim)} events took a total of {elapsed_time}s ({elapsed_time/len(sim)}s per event)')
-
-    with open(save_loc, "wb") as f:
-        pkl.dump([sim,idealhough,hough,cnn], f)
+    fit_rings(sim, predictions)

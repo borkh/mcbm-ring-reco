@@ -1,0 +1,7 @@
+{
+    "python.analysis.typeCheckingMode": "basic",
+    "files.associations": {
+        "Run_ring_finder.C": "cpp",
+        "Inference_ring_finder.C": "cpp"
+    }
+}

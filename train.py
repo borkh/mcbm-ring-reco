@@ -1,55 +1,91 @@
 import datetime
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 
-import cv2
-import numpy as np
+import matplotlib.pyplot as plt
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
+os.environ['WANDB_SILENT'] = 'true'  # nopep8
+
 import tensorflow as tf
-from wandb.keras import WandbCallback
+
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # nopep8
+
+import plotly.express as px
 from keras_lr_finder import LRFinder
+from wandb.keras import WandbCallback
 
 import wandb
+from data.create_data import DataGen
 from models.model import *
 from utils.one_cycle import *
-from utils.sweep_configs import *
 
 
-class dg(tf.keras.utils.Sequence):
-    def __init__(self, dir_, batch_size=32):
-        self.dir = tf.compat.as_str_any(dir_)
-        self.bs = batch_size
-        n = os.listdir(f'{self.dir}/X')
-        self.n = len([file for file in n if file.endswith('.png')])
+def find_lr_range(training_size=50000, start_lr=1e-7, end_lr=5, epochs=5) -> None:
+    """
+    Find the optimal learning rate range for the model.
 
-    def __getitem__(self, index):
-        X = np.array([cv2.imread(f'{self.dir}/X/{i}.png', cv2.IMREAD_GRAYSCALE)[:, :, np.newaxis]/255.
-                      for i in range(index*self.bs, (index+1)*self.bs)])
-        y = np.array([np.load(f'{self.dir}/y/{i}.npy')
-                      for i in range(index*self.bs, (index+1)*self.bs)])
+    This function trains the model for a few epochs with a learning rate schedule
+    that increases the learning rate exponentially from a very small value to a very large value.
+    The learning rate is plotted against the loss, and the optimal learning rate range is determined
+    based on the minimum value of the loss curve. The 'max_lr' and 'init_lr' values are then set
+    in the run_config dictionary in sweep_configs.py. 'max_lr' should be set to the minimum value of
+    the loss curve, and 'init_lr' should be set to about 1/20 to 1/100 of 'max_lr'.
 
-        return X, y
+    Parameters:
+        start_lr (float, optional): The initial learning rate. Default is 1e-7.
+        end_lr (float, optional): The final learning rate. Default is 5.
+        epochs (int, optional): The number of epochs to train the model for. Default is 5.
+    """
+    os.environ['WANDB_MODE'] = 'dryrun'
+    with wandb.init(config=None):  # type: ignore
+        c = wandb.config
 
-    def __len__(self):
-        return self.n//self.bs
+        train_gen = DataGen(train_dir, batch_size=training_size)
+        x, y = train_gen[0]
+
+        model = build_model(input_shape, c)
+
+        lr = 0.001
+        opt = SGD(lr, momentum=0.95)
+
+        model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
+
+        lr_finder = LRFinder(model)
+        lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
+                       batch_size=c.batch_size, epochs=epochs)
+        lr_finder.plot_loss(n_skip_beginning=20, n_skip_end=3)
+        plt.show()
 
 
-def find_lr_range(x, y):
-    model = build_model(x.shape[1:], config=None)
+def train(c=None) -> None:
+    """
+    Trains a model using the specified hyperparameters and saves the model and
+    training history to a specified directory.
 
-    lr = 0.001
-    opt = SGD(lr)
-    model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
+    This function loads training and validation data generators, builds a model
+    using a specified architecture, compiles the model with a mean squared error
+    loss function and an SGD optimizer with a learning rate schedule based on
+    the 1cycle policy, and trains the model. The model and training history are
+    then saved to 'models/checkpoints/'.
 
-    lr_finder = LRFinder(model)
-    lr_finder.find(x, y, start_lr=1e-7, end_lr=5, batch_size=100, epochs=5)
-    lr_finder.plot_loss(n_skip_beginning=20, n_skip_end=5)
-    plt.show()
+    Parameters:
+        c (dict, optional): A dictionary containing the hyperparameters for the
+            model. The dictionary should include the following keys:
+                - 'batch_size': The number of samples per gradient update.
+                - 'epochs': The number of epochs to train the model for.
+                - 'init_lr': The initial learning rate.
+                - 'max_lr': The maximum learning rate.
+                - 'conv_layers': The number of convolutional layers in the model.
+                - 'nof_initial_filters': The number of filters in the first
+                    convolutional layer.
+                - 'conv_kernel_size': The size of the convolutional kernel.
 
+    Returns:
+        None
+    """
 
-def train(c=None):
-    train_dir = 'data/train'
-    nof_files = len(os.listdir(train_dir + '/X'))
-    name, now = f'{nof_files//1000000}M', datetime.datetime.now().strftime("%Y%m%d%H%M")
+    name = f'{nof_files//1000000}M'
+    now = datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = f"models/checkpoints/{name}-{now}.model"
     mc = tf.keras.callbacks.ModelCheckpoint(model_path, monitor="val_loss",
                                             save_best_only=False)
@@ -57,28 +93,39 @@ def train(c=None):
     with wandb.init(config=None):  # type: ignore
         c = wandb.config
 
-        train_dg = dg(train_dir, batch_size=c.batch_size)
-        val_dg = dg('data/val', batch_size=c.batch_size)
+        # define data generators for training and validation
+        train_gen = DataGen(train_dir, batch_size=c.batch_size)
+        val_gen = DataGen('data/val', batch_size=c.batch_size)
 
-        spe = nof_files // c.batch_size  # steps per epoch
+        # calculate the number of steps per epoch and the total number of steps
+        spe = train_gen.n // c.batch_size
         steps = spe * c.epochs
 
-        lr_schedule = OneCycleSchedule(c.init_lr, c.max_lr, steps,
-                                       c.mom_min, c.mom_max, c.phase0perc)
+        lr_schedule = OneCycleSchedule(c.init_lr, c.max_lr, steps)
 
-        model = build_model((72, 32, 1), c)
+        model = build_model(input_shape, c)
 
-        opt = tf.keras.optimizers.SGD(c.init_lr, momentum=0.95)
+        opt = tf.keras.optimizers.SGD(c.init_lr, momentum=0.95, nesterov=True)
         model.compile(optimizer=opt, loss="mse", metrics=["acc"])
 
-        model.fit(train_dg,
-                  validation_data=val_dg,
+        model.fit(train_gen,
+                  validation_data=val_gen,
                   steps_per_epoch=spe,
                   epochs=c.epochs,
                   shuffle=True,
                   callbacks=[WandbCallback(), mc, lr_schedule])
 
+        lr_schedule.plot()
+
 
 if __name__ == "__main__":
+    train_dir = 'data/train'
+    nof_files = len(os.listdir(train_dir + '/X'))
+    input_shape = (72, 32, 1)
+
+    # sweep_id = wandb.sweep(run_config)
+    # wandb.agent(sweep_id, find_lr_range, count=1)
+
+    os.environ['WANDB_MODE'] = 'online'
     sweep_id = wandb.sweep(run_config, project='ring-finder')
     wandb.agent(sweep_id, train, count=1)
