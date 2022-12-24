@@ -44,10 +44,14 @@ Keras API.
 ## Usage
 
 1. Clone the repository
-```git clone https://github.com/borkh/mcbm-ring-reco```
+```
+git clone https://github.com/borkh/mcbm-ring-reco
+```
 
 2. Install the required packages
-```pip install -r requirements.txt```
+```
+pip install -r requirements.txt
+```
 
 3. After first cloning the repository, training and validation data has to be
    created. This can be done by running `data/create_data.py` and specifying the
@@ -57,16 +61,26 @@ Keras API.
    files. By default, the data is also visualized after creation. This can be
    disabled by setting the `--visualize` flag to `False`.  For example, to
    append 1000 files to the `data/train` directory without visualization, run:
-   ```python data/create_data.py --target=data/train --n_files=1000 --append=True --visualize=False```
+   ```
+   python data/create_data.py --target=data/train --n_files=1000 --append=True --visualize=False
+   ```
    Alternatively, the file can be run in an IPython shell and the arguments can
    be changed manually.
 
 4. Now, the model can be trained by running
-    ```python train.py --target_dir=data/train``` or by running the file in an
-    IPython shell. If you want to run the LR Range Test first, you can run
-    ```python train.py --find_lr_range```. This will run the LR Range Test and
-    plot the results. The LR Range Test is described in Leslie N. Smith's paper
-    "Cyclical Learning Rates for Training Neural Networks" (https://arxiv.org/abs/1506.01186).
-    From the plot the optimal initial and maximum learning rates for the `1cycle` policy
-    can be determined. These values and other hyperparameters can be changed in
-    `models/model.py`. The trained models will be saved in the `models/checkpoints` directory.
+    ``
+    python train.py --target_dir=data/train
+    ``` 
+    or by running the file in an IPython shell. If you want to run the LR Range
+    Test first, you can run
+    ```
+    python train.py --find_lr_range
+    ```.
+    This will run the LR Range Test and plot the results. The LR Range Test is
+    described in Leslie N. Smith's paper "Cyclical Learning Rates for Training
+    Neural Networks" (https://arxiv.org/abs/1506.01186).  From the plot the
+    optimal initial and maximum learning rates for the `1cycle` policy can be
+    determined. These values and other hyperparameters can be changed in
+    `models/model.py`. The trained models will be saved in the
+    `models/checkpoints` directory.
+    
