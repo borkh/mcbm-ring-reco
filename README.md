@@ -70,16 +70,23 @@ pip install -r requirements.txt
 
 4. Now, the model can be trained by running
     ```
-    python train.py --target_dir=data/train
+    python train.py
     ``` 
-    or by running the file in an IPython shell. If you want to run the LR Range
-    Test first, you can run
+    By default, the directories containing the training and validation data are
+    set to `data/train` and `data/val`. These can be changed by specifying the
+    `--target_dir` and `--val_dir` arguments. For example,
     ```
-    python train.py --find_lr_range
+    python train.py --target_dir=<TARGET_DIR> --val_dir=<VAL_DIR>
+    ``` 
+    The model can also be trained in an IPython shell and
+    the arguments can be changed manually.
+    You can also run the `LR range test` first by running
     ```
-    This will run the LR Range Test and plot the results. The LR Range Test is
-    described in Leslie N. Smith's paper "Cyclical Learning Rates for Training
-    Neural Networks" (https://arxiv.org/abs/1506.01186).  From the plot the
+    python train.py --target_dir=<TARGET_DIR> --find_lr_range
+    ```
+    This 'LR range test' is described in Leslie N.
+    Smith's paper "Cyclical Learning Rates for Training Neural Networks"
+    (https://arxiv.org/abs/1506.01186). This will create a plot from which the
     optimal initial and maximum learning rates for the `1cycle` policy can be
     determined. These values and other hyperparameters can be changed in
     `models/model.py`. The trained models will be saved in the

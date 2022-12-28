@@ -3,12 +3,15 @@ import sys
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 
+import argparse
+
 import numpy as np
 import tensorflow as tf
 from numpy.random import choice
 from sklearn.datasets import make_circles
 from tqdm import tqdm
 
+sys.path.append('.')
 sys.path.append('..')
 
 from utils.utils import *  # nopep8
@@ -297,7 +300,7 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
     display images.
 
     The event displays have a fixed input shape of (72, 32, 1), and the number
-    of rings in the event displays is chosen randomly from the range [1, 5]. The
+    of rings in the event displays is chosen randomly from the range [0, 4]. The
     number of hits in each ring is chosen randomly from the range [8, 17], and
     the number of noise hits is chosen randomly from the range [0, 9].
 
@@ -355,12 +358,40 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
 
 
 if __name__ == "__main__":
-    dir_ = 'train'
-    add_to_dataset(target_dir=dir_, n=1000000, append=False)
+    try:
+        __IPYTHON__
+    except NameError:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--target_dir', type=str, required=True,
+                            help='The directory to save the dataset to.')
+        parser.add_argument('--nof_files', type=int, required=True,
+                            help='The number of files to create.')
+        parser.add_argument('--append', action='store_true', required=False,
+                            help='''If set, append the generated event displays and
+                            labels to an existing dataset. If not set, delete the
+                            existing dataset and create a new one.''')
+        parser.add_argument('--no_visualization', action='store_true', required=False,
+                            help='''If set, do not visualize the generated images
+                            after creation. If not set, a few sample images are
+                            displayed after creation.''')
+        args = parser.parse_args()
 
-    # load sample images and labels to verify correctness of the dataset
-    datagen = DataGen(dir_, batch_size=200)
-    X, Y = datagen[0]
+        target_dir = args.target_dir
+        nof_files = args.nof_files
+        append = args.append
+        no_visualization = args.no_visualization
+    else:
+        target_dir = 'val'
+        nof_files = 200
+        append = False
+        no_visualization = False
 
-    display_images(X)
-    fit_rings(X, Y)
+    add_to_dataset(target_dir=target_dir, n=nof_files, append=append)
+
+    if not no_visualization:
+        # load sample images and labels to verify correctness of the dataset
+        datagen = DataGen(target_dir, batch_size=200)
+        X, Y = datagen[0]
+
+        display_images(X)
+        fit_rings(X, Y)

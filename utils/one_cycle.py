@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import plotly.express as px
 from plotly.subplots import make_subplots
+import plotly.io as pio
 
 
 class CosineAnnealer:
@@ -136,3 +137,6 @@ class OneCycleSchedule(tf.keras.callbacks.Callback):
             for trace in range(len(figure["data"])):  # type: ignore
                 fig.append_trace(figure["data"][trace], row=1, col=i+1)
         fig.show()
+
+        # save the plot
+        pio.write_image(fig, 'plots/one_cycle.png')

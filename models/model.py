@@ -1,8 +1,6 @@
 from tensorflow.keras.layers import (BatchNormalization, Conv2D, Dense,  # type: ignore
                                      Flatten, Input, MaxPooling2D, Reshape)
 from tensorflow.keras.models import Model  # type: ignore
-from tensorflow.keras.optimizers import SGD  # type: ignore
-import matplotlib.pyplot as plt
 
 # create wandb configuration dictionary which contains all the hyperparameters
 # that will be used in train.py and in build_model()

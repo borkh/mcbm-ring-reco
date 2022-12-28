@@ -7,10 +7,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 os.environ['WANDB_SILENT'] = 'true'  # nopep8
 
 import tensorflow as tf
+from tensorflow.keras.optimizers import SGD  # type: ignore
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # nopep8
 
-import plotly.express as px
+import argparse
+
+import cv2
 from keras_lr_finder import LRFinder
 from wandb.keras import WandbCallback
 
@@ -20,7 +23,7 @@ from models.model import *
 from utils.one_cycle import *
 
 
-def find_lr_range(training_size=50000, start_lr=1e-7, end_lr=5, epochs=5) -> None:
+def lr_range_test(training_size=50000, start_lr=1e-7, end_lr=5, epochs=5) -> None:
     """
     Find the optimal learning rate range for the model.
 
@@ -54,6 +57,7 @@ def find_lr_range(training_size=50000, start_lr=1e-7, end_lr=5, epochs=5) -> Non
         lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
                        batch_size=c.batch_size, epochs=epochs)
         lr_finder.plot_loss(n_skip_beginning=20, n_skip_end=3)
+        plt.savefig('plots/lr_range_test.png')
         plt.show()
 
 
@@ -84,6 +88,7 @@ def train(c=None) -> None:
         None
     """
 
+    nof_files = len(os.listdir(train_dir + '/X'))
     name = f'{nof_files//1000000}M'
     now = datetime.datetime.now().strftime("%Y%m%d%H%M")
     model_path = f"models/checkpoints/{name}-{now}.model"
@@ -119,13 +124,33 @@ def train(c=None) -> None:
 
 
 if __name__ == "__main__":
-    train_dir = 'data/train'
-    nof_files = len(os.listdir(train_dir + '/X'))
-    input_shape = (72, 32, 1)
+    try:
+        __IPYTHON__
+    except NameError:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--train_dir', type=str, default='data/train',
+                            help='The directory containing the training data.')
+        parser.add_argument('--val_dir', type=str, default='data/val',
+                            help='The directory containing the validation data.')
+        parser.add_argument('--find_lr_range', action='store_true',
+                            help='''Run the learning rate range finder to determine
+                            the optimal learning rate range.''')
+        args = parser.parse_args()
 
-    # sweep_id = wandb.sweep(run_config)
-    # wandb.agent(sweep_id, find_lr_range, count=1)
+        train_dir = args.train_dir
+        val_dir = args.val_dir
+        find_lr_range = args.find_lr_range
+    else:
+        train_dir = 'data/train'
+        val_dir = 'data/val'
+        find_lr_range = False
 
-    os.environ['WANDB_MODE'] = 'online'
-    sweep_id = wandb.sweep(run_config, project='ring-finder')
-    wandb.agent(sweep_id, train, count=1)
+    # load sample png form 'data/train' to get input shape
+    input_shape = cv2.imread(train_dir + '/X/0.png')[..., :1].shape
+
+    if find_lr_range:
+        sweep_id = wandb.sweep(run_config)
+        wandb.agent(sweep_id, lr_range_test, count=1)
+    else:
+        sweep_id = wandb.sweep(run_config, project='ring-finder')
+        wandb.agent(sweep_id, train, count=1)
