@@ -125,7 +125,7 @@ def train(c=None) -> None:
 
 if __name__ == "__main__":
     try:
-        __IPYTHON__
+        __IPYTHON__  # type: ignore
     except NameError:
         parser = argparse.ArgumentParser()
         parser.add_argument('--train_dir', type=str, default='data/train',

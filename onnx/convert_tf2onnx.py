@@ -1,4 +1,3 @@
-from models.model import DataGen
 import os  # nopep8
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 
@@ -6,9 +5,12 @@ import numpy as np
 import tensorflow as tf
 import subprocess
 import sys
+import argparse
 
+sys.path.append('.')
 sys.path.append('..')
 from utils.utils import *  # nopep8
+from data.create_data import DataGen  # nopep8
 
 
 @measure_time
@@ -32,17 +34,15 @@ def predict_keras(model, DataGen):
     return model.predict(DataGen)
 
 
-def run(model_path='../models/checkpoints/4M-202212072326.model'):
+def run(model_path):
     # Load the keras model
-    print(f'Convert keras model to onnx...')
-    print(model_path)
     subprocess.run(['python', '-m', 'tf2onnx.convert',
-                    '--saved-model', model_path, '--output', 'model.onnx'])
+                    '--saved-model', model_path, '--output', '../models/model.onnx'])
 
     print(f'Loading keras model {model_path}...')
     keras_model = tf.keras.models.load_model(model_path)
 
-    test_gen = DataGen('../data/test', batch_size=1)
+    test_gen = DataGen('../data/test', batch_size=2000)
 
     print("Running keras model...")
     keras_output, keras_time = predict_keras(keras_model, test_gen)
@@ -73,11 +73,20 @@ def run(model_path='../models/checkpoints/4M-202212072326.model'):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        model_path = sys.argv[1]
+    try:
+        __IPYTHON__  # type: ignore
+    except NameError:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--model_path', type=str, required=True,
+                            help='''Path to the model that will be converted to
+                            onnx format. (e.g.
+                            models/checkpoints/4M-202212072326.model)''')
+        args = parser.parse_args()
+        model_path = os.path.abspath(args.model_path)
     else:
-        print("No model path provided. Using default model...")
         model_path = '../models/checkpoints/4M-202212072326.model'
-        #sys.exit("No model path provided. Exiting...")
+
+    script_path = os.path.abspath(__file__)
+    os.chdir(os.path.dirname(script_path))
 
     keras_output, onnx_output = run(model_path)

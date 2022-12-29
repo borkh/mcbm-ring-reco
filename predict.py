@@ -31,7 +31,7 @@ def hough_parameters():
 
 
 if __name__ == '__main__':
-    model_path = 'models/checkpoints/' + '1M-202212232021.model'
+    model_path = 'models/checkpoints/' + '1M-202212282307.model'
     model = tf.keras.models.load_model(model_path)
 
     sim, idealhough, hough = (x[:100] for x in hough_parameters())

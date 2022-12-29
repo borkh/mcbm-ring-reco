@@ -30,7 +30,7 @@ int number_of_png_files_in_dir(string dir_name) {
 void Inference_ring_finder() {
 
     Ort::Env env{OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ring_finder"};
-    Ort::Session session(env, "model.onnx", Ort::SessionOptions(nullptr));
+    Ort::Session session(env, "../models/model.onnx", Ort::SessionOptions(nullptr));
 
     const char* input_names[] = {"input_1"};
     const char* output_names[] = {"reshape"};

@@ -66,6 +66,7 @@ class Display(np.ndarray):
     params: np.ndarray
     positions: np.ndarray
     nof_hits_to_delete: int
+    ring_hits: np.ndarray
 
     """
     A subclass of `numpy.ndarray` representing a display.
@@ -112,6 +113,7 @@ class Display(np.ndarray):
                               offset=offset, strides=strides, order=order)
         obj.params = np.zeros((5, 5))
         obj.nof_rings = 0
+        obj.ring_hits = np.array([[-1, -1]])
         obj.positions = np.array([(x, y) for x in range(obj.shape[0])
                                   for y in range(obj.shape[1])])
         obj.nof_hits_to_delete = 20
@@ -156,7 +158,7 @@ class Display(np.ndarray):
             if len(indices) == 0:
                 indices.append(x*self.shape[1]+y)
             else:
-                if all([np.linalg.norm(np.array([x, y]) - np.array(divmod(i, self.shape[1]))) > min_dist for i in indices]):
+                if all([np.linalg.norm(np.array([x, y]) - np.array(divmod(i, self.shape[1]))) > min_dist for i in indices]):  # type: ignore
                     indices.append(x*self.shape[1]+y)
                 else:
                     break_con += 1
@@ -229,9 +231,15 @@ class Display(np.ndarray):
                                 & set(tuple(x) for x in self.positions)])
             ellipse = np.unique(ellipse, axis=0)
 
-            # if the number of hits is too small, create a new ellipse and
-            # append it to the current one until the number of hits is at least 12
-            if ellipse.shape[0] >= 8:
+            # check how many hits are shared with other ellipses
+            common = np.array([x for x in set(tuple(x) for x in ellipse)
+                               & set(tuple(x) for x in self.ring_hits)])
+            nof_unique_hits = ellipse.shape[0] - common.shape[0]
+
+            # if the ellipse has at least 8 unique hits, add it to the display,
+            # add the hits to the ring_hits array, and break the loop
+            if nof_unique_hits >= 8:
+                self.ring_hits = np.vstack((self.ring_hits, ellipse))
                 break
             # 'ellipse' might be empty if all ellipse hits are outside of the display.
             # In this case, create a new ellipse.
@@ -330,7 +338,7 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
         range_ = range(len(os.listdir(f'{target_dir}/X')) - 1,
                        len(os.listdir(f'{target_dir}/X')) - 1 + n)
     else:
-        if input("Are you sure you want to delete the existing dataset? (y/n)") == 'y':
+        if input('Are you sure you want to delete the existing dataset? (y/n) ') == 'y':
             print(f'Deleting files in {target_dir}/X...')
             x_files = [f for f in os.listdir(f'{target_dir}/X')
                        if f.endswith('.png')]
@@ -359,7 +367,7 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
 
 if __name__ == "__main__":
     try:
-        __IPYTHON__
+        __IPYTHON__  # type: ignore
     except NameError:
         parser = argparse.ArgumentParser()
         parser.add_argument('--target_dir', type=str, required=True,
@@ -381,8 +389,8 @@ if __name__ == "__main__":
         append = args.append
         no_visualization = args.no_visualization
     else:
-        target_dir = 'val'
-        nof_files = 200
+        target_dir = 'train'
+        nof_files = 8000000
         append = False
         no_visualization = False
 
