@@ -23,7 +23,7 @@ from models.model import *
 from utils.one_cycle import *
 
 
-def lr_range_test(training_size=50000, start_lr=1e-7, end_lr=5, epochs=5) -> None:
+def lr_range_test(training_size=100000, start_lr=1e-7, end_lr=5, epochs=5) -> None:
     """
     Find the optimal learning rate range for the model.
 
@@ -90,10 +90,8 @@ def train(c=None) -> None:
 
     nof_files = len(os.listdir(train_dir + '/X'))
     name = f'{nof_files//1000000}M'
-    now = datetime.datetime.now().strftime("%Y%m%d%H%M")
-    model_path = f"models/checkpoints/{name}-{now}.model"
-    mc = tf.keras.callbacks.ModelCheckpoint(model_path, monitor="val_loss",
-                                            save_best_only=False)
+    now = datetime.datetime.now().strftime('%Y%m%d%H%M')
+    model_path = f'models/checkpoints/{name}-{now}.model'
 
     with wandb.init(config=None):  # type: ignore
         c = wandb.config
@@ -118,7 +116,9 @@ def train(c=None) -> None:
                   steps_per_epoch=spe,
                   epochs=c.epochs,
                   shuffle=True,
-                  callbacks=[WandbCallback(), mc, lr_schedule])
+                  callbacks=[WandbCallback(), lr_schedule])
+
+        model.save(model_path)
 
         lr_schedule.plot()
 

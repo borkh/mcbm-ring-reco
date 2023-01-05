@@ -90,3 +90,5 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(script_path))
 
     keras_output, onnx_output = run(model_path)
+
+    # TODO: Running in ipython does not work. 'root' or 'bash' commands not found.
