@@ -44,6 +44,18 @@ class DataGen(tf.keras.utils.Sequence):
         self.batch_size = batch_size
         n = os.listdir(f'{self.target_dir}/X')
         self.n = len([file for file in n if file.endswith('.png')])
+        self.current_index = 0
+
+    def __iter__(self):
+        return self  # return the iterator object
+
+    def __next__(self):
+        if self.current_index >= self.n:
+            raise StopIteration
+        else:
+            result = self.__getitem__(self.current_index)
+            self.current_index += 1
+            return result
 
     def __getitem__(self, index):
         start = index * self.batch_size

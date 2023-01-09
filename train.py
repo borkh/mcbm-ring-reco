@@ -1,5 +1,6 @@
 import datetime
 import os
+import traceback
 
 import matplotlib.pyplot as plt
 
@@ -51,7 +52,7 @@ def lr_range_test(training_size=100000, start_lr=1e-7, end_lr=5, epochs=5) -> No
         lr = 0.001
         opt = SGD(lr, momentum=0.95)
 
-        model.compile(optimizer=opt, loss="mse", metrics=["accuracy"])
+        model.compile(optimizer=opt, loss=custom_loss, metrics=["accuracy"])
 
         lr_finder = LRFinder(model)
         lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
@@ -96,31 +97,73 @@ def train(c=None) -> None:
     with wandb.init(config=None):  # type: ignore
         c = wandb.config
 
-        # define data generators for training and validation
-        train_gen = DataGen(train_dir, batch_size=c.batch_size)
-        val_gen = DataGen('data/val', batch_size=c.batch_size)
+        try:
+            # define data generators for training and validation
+            train_gen = DataGen(train_dir, batch_size=c.batch_size)
+            val_gen = DataGen('data/val', batch_size=c.batch_size)
 
-        # calculate the number of steps per epoch and the total number of steps
-        spe = train_gen.n // c.batch_size
-        steps = spe * c.epochs
+            # calculate the number of steps per epoch and the total number of steps
+            spe = train_gen.n // c.batch_size
+            steps = spe * c.epochs
 
-        lr_schedule = OneCycleSchedule(c.init_lr, c.max_lr, steps)
+            lr_schedule = OneCycleSchedule(c.init_lr, c.max_lr, steps)
 
-        model = build_model(input_shape, c)
+            model = build_model(input_shape, c)
 
-        opt = tf.keras.optimizers.SGD(c.init_lr, momentum=0.95, nesterov=True)
-        model.compile(optimizer=opt, loss="mse", metrics=["acc"])
+            opt = tf.keras.optimizers.SGD(
+                c.init_lr, momentum=0.95, nesterov=True)
+            model.compile(optimizer=opt, metrics=["acc"],
+                          loss=custom_loss(train_gen))
 
-        model.fit(train_gen,
-                  validation_data=val_gen,
-                  steps_per_epoch=spe,
-                  epochs=c.epochs,
-                  shuffle=True,
-                  callbacks=[WandbCallback(), lr_schedule])
+            model.fit(train_gen,
+                      validation_data=val_gen,
+                      steps_per_epoch=spe,
+                      epochs=c.epochs,
+                      shuffle=True,
+                      callbacks=[WandbCallback(), lr_schedule])
 
-        model.save(model_path)
+            model.save(model_path)
 
-        lr_schedule.plot()
+            lr_schedule.plot()
+        except Exception:
+            print(traceback.format_exc())
+
+
+def train2(training_size=1000, c=None) -> None:
+    nof_files = len(os.listdir(train_dir + '/X'))
+    name = f'{training_size//1000}k'
+    now = datetime.datetime.now().strftime('%Y%m%d%H%M')
+    model_path = f'models/checkpoints/{name}-{now}.model'
+
+    with wandb.init(config=None):  # type: ignore
+        try:
+            c = wandb.config
+
+            train_gen = DataGen(train_dir, batch_size=training_size)
+
+            X, y = train_gen[0]
+
+            spe = len(X) // c.batch_size
+            steps = spe * c.epochs
+
+            lr_schedule = OneCycleSchedule(c.init_lr, c.max_lr, steps)
+
+            model = build_model(input_shape, c)
+
+            opt = tf.keras.optimizers.SGD(
+                c.init_lr, momentum=0.95, nesterov=True)
+            model.compile(optimizer=opt, loss=custom_loss(X), metrics=["acc"])
+
+            model.fit(X, y, batch_size=c.batch_size, validation_split=0.1,
+                      epochs=c.epochs,
+                      shuffle=True,
+                      callbacks=[WandbCallback(), lr_schedule])
+
+            model.save(model_path)
+
+            lr_schedule.plot()
+        except Exception:
+            print(traceback.format_exc())
 
 
 if __name__ == "__main__":
@@ -148,6 +191,7 @@ if __name__ == "__main__":
     # load sample png form 'data/train' to get input shape
     input_shape = cv2.imread(train_dir + '/X/0.png')[..., :1].shape
 
+    i = 0
     if find_lr_range:
         sweep_id = wandb.sweep(run_config)
         wandb.agent(sweep_id, lr_range_test, count=1)

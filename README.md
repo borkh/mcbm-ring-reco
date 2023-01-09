@@ -92,17 +92,16 @@ pip install -r requirements.txt
     `models/model.py`. The trained models will be saved in the
     `models/checkpoints` directory.
 
-5. After training, the model can be converted to ONNX format by running
-    ```
-    python onnx/convert_tf2onnx.py --model_path=<MODEL_PATH>
-    ```
-    This will create a file called `model.onnx` in the `models` directory. This
-    file can then be used in the CbmRoot framework for inference.
-
-    Additionally, inference times for the TensorFlow and ONNX models will be
-    printed to the console. Lastly, both models are used to predict the ring
-    parameters for the images in the `data/test` directory. To see if the
-    conversion was successful, the predictions of the TensorFlow and ONNX models
-    are compared.  The relative and absolute differences between the TensorFlow
-    and ONNX predictions are printed to the console to check if they are within
-    a reasonable range. 
+5. To convert the trained model to ONNX format, run the following command:
+   ```
+   python onnx/convert_tf2onnx.py --model_path=<MODEL_PATH>
+   ``` 
+   This will generate a file called `model.onnx` in the `models` directory. This
+   file can then be used in the CbmRoot framework for inference. In addition,
+   the inference times for both the TensorFlow and ONNX models will be printed
+   to the console. Both models will also be used to predict the ring parameters
+   for the images in the `data/test` directory. To verify that the conversion was
+   successful, the predictions of the TensorFlow and ONNX models will be
+   compared and the relative and absolute differences between them will be
+   printed to the console to ensure they are within an acceptable range.
+   Can also be run in an IPython shell.

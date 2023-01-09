@@ -84,11 +84,9 @@ if __name__ == '__main__':
         args = parser.parse_args()
         model_path = os.path.abspath(args.model_path)
     else:
-        model_path = '../models/checkpoints/4M-202212072326.model'
+        model_path = '../models/checkpoints/10M-202212311744.model'
 
     script_path = os.path.abspath(__file__)
     os.chdir(os.path.dirname(script_path))
 
     keras_output, onnx_output = run(model_path)
-
-    # TODO: Running in ipython does not work. 'root' or 'bash' commands not found.
