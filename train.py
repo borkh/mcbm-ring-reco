@@ -2,29 +2,31 @@ import datetime
 import os
 import traceback
 
+import absl.logging
 import matplotlib.pyplot as plt
 
+# suppress warnings and info messages
+absl.logging.set_verbosity(absl.logging.ERROR)  # nopep8
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 os.environ['WANDB_SILENT'] = 'true'  # nopep8
-
-import tensorflow as tf
-from tensorflow.keras.optimizers import SGD  # type: ignore
-
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # nopep8
 
 import argparse
 
 import cv2
+import tensorflow as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # nopep8
 from keras_lr_finder import LRFinder
+from tensorflow.keras.optimizers import SGD  # type: ignore
 from wandb.keras import WandbCallback
 
 import wandb
 from data.create_data import DataGen
 from models.model import *
 from utils.one_cycle import *
+from utils.utils import *
 
 
-def lr_range_test(training_size=100000, start_lr=1e-7, end_lr=5, epochs=5) -> None:
+def lr_range_test(training_size=10000, start_lr=1e-7, end_lr=5, epochs=5) -> None:
     """
     Find the optimal learning rate range for the model.
 
@@ -47,12 +49,12 @@ def lr_range_test(training_size=100000, start_lr=1e-7, end_lr=5, epochs=5) -> No
         train_gen = DataGen(train_dir, batch_size=training_size)
         x, y = train_gen[0]
 
-        model = build_model(input_shape, c)
+        model = build_model(input_shape_, c)
 
         lr = 0.001
         opt = SGD(lr, momentum=0.95)
 
-        model.compile(optimizer=opt, loss=custom_loss, metrics=["accuracy"])
+        model.compile(optimizer=opt, loss=custom_loss)
 
         lr_finder = LRFinder(model)
         lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
@@ -100,7 +102,7 @@ def train(c=None) -> None:
         try:
             # define data generators for training and validation
             train_gen = DataGen(train_dir, batch_size=c.batch_size)
-            val_gen = DataGen('data/val', batch_size=c.batch_size)
+            val_gen = DataGen('data/val', batch_size=500)
 
             # calculate the number of steps per epoch and the total number of steps
             spe = train_gen.n // c.batch_size
@@ -108,12 +110,12 @@ def train(c=None) -> None:
 
             lr_schedule = OneCycleSchedule(c.init_lr, c.max_lr, steps)
 
-            model = build_model(input_shape, c)
+            model = build_model(input_shape_, c)
 
             opt = tf.keras.optimizers.SGD(
                 c.init_lr, momentum=0.95, nesterov=True)
-            model.compile(optimizer=opt, metrics=["acc"],
-                          loss=custom_loss(train_gen))
+            # , run_eagerly=True)
+            model.compile(optimizer=opt, loss=custom_loss)
 
             model.fit(train_gen,
                       validation_data=val_gen,
@@ -125,43 +127,13 @@ def train(c=None) -> None:
             model.save(model_path)
 
             lr_schedule.plot()
-        except Exception:
-            print(traceback.format_exc())
 
+            X, y = val_gen[0]
+            predictions, pred_time = predict(model, X)
+            print(
+                f'Inference took {pred_time}s to run. {pred_time / len(X)}s per event')
+            fit_rings(X, predictions)
 
-def train2(training_size=1000, c=None) -> None:
-    nof_files = len(os.listdir(train_dir + '/X'))
-    name = f'{training_size//1000}k'
-    now = datetime.datetime.now().strftime('%Y%m%d%H%M')
-    model_path = f'models/checkpoints/{name}-{now}.model'
-
-    with wandb.init(config=None):  # type: ignore
-        try:
-            c = wandb.config
-
-            train_gen = DataGen(train_dir, batch_size=training_size)
-
-            X, y = train_gen[0]
-
-            spe = len(X) // c.batch_size
-            steps = spe * c.epochs
-
-            lr_schedule = OneCycleSchedule(c.init_lr, c.max_lr, steps)
-
-            model = build_model(input_shape, c)
-
-            opt = tf.keras.optimizers.SGD(
-                c.init_lr, momentum=0.95, nesterov=True)
-            model.compile(optimizer=opt, loss=custom_loss(X), metrics=["acc"])
-
-            model.fit(X, y, batch_size=c.batch_size, validation_split=0.1,
-                      epochs=c.epochs,
-                      shuffle=True,
-                      callbacks=[WandbCallback(), lr_schedule])
-
-            model.save(model_path)
-
-            lr_schedule.plot()
         except Exception:
             print(traceback.format_exc())
 
@@ -189,9 +161,9 @@ if __name__ == "__main__":
         find_lr_range = False
 
     # load sample png form 'data/train' to get input shape
-    input_shape = cv2.imread(train_dir + '/X/0.png')[..., :1].shape
+    input_shape_ = cv2.imread(
+        train_dir + '/X/0.png')[..., :1].shape  # type: ignore
 
-    i = 0
     if find_lr_range:
         sweep_id = wandb.sweep(run_config)
         wandb.agent(sweep_id, lr_range_test, count=1)

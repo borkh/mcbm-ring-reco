@@ -15,6 +15,16 @@ def measure_time(func):
     return wrapper
 
 
+@measure_time
+def predict(model, X):
+    return model.predict(X)
+
+
+@measure_time
+def evaluate(model, data_generator):
+    return model.evaluate(data_generator)
+
+
 def plot_single_event(image: np.ndarray, Y1=None, Y2=None, Y3=None,
                       Y4=None, scaling: int = 10) -> np.ndarray:
     """
@@ -57,22 +67,29 @@ def plot_single_event(image: np.ndarray, Y1=None, Y2=None, Y3=None,
     return image
 
 
-def display_images(imgs: np.ndarray, col_width: int = 5) -> None:
-    if imgs.shape[-1] == 1:
-        imgs = np.repeat(imgs, 3, axis=-1)
-    imgs = imgs[:len(imgs) // col_width * col_width]
-    imgs = imgs.reshape(imgs.shape[0] // col_width, col_width, *imgs.shape[1:])
-    fig = px.imshow(imgs, animation_frame=0, facet_col=1, binary_string=True,
-                    height=700)
-    fig.show()
+def display_images(imgs: np.ndarray, col_width: int = 5, title="") -> None:
+    try:
+        if imgs.shape[-1] == 1:
+            imgs = np.repeat(imgs, 3, axis=-1)
+        imgs = imgs[:len(imgs) // col_width * col_width]
+        imgs = imgs.reshape(
+            imgs.shape[0] // col_width, col_width, *imgs.shape[1:])
+        fig = px.imshow(imgs, animation_frame=0, facet_col=1, binary_string=True,
+                        height=700)
+        fig.update_layout(title={'text': title, 'font': {
+            'size': 24, 'color': 'red'}})
+        fig.show()
+    except ValueError as e:
+        print(f'\nError: {e}')
+        print(f'The number of images must be at least {col_width}.')
 
 
-def fit_rings(images, params) -> None:
+def fit_rings(images, params, title="") -> None:
     if images.shape[-1] == 1:
         images = np.repeat(images, 3, axis=-1)
     ring_fits = np.array([plot_single_event(x, y)
                           for x, y in zip(images, params)])
-    display_images(ring_fits)
+    display_images(ring_fits, title=title)
 
 
 # functions for reading .csv file from simulation data
@@ -94,7 +111,7 @@ def loadFeatures(datafile, pixel_x=32, pixel_y=72):
         hits_temp, clip_value_min=0., clip_value_max=1.)
     hits = tf.cast(hits_temp[..., tf.newaxis],  # type: ignore
                    dtype=tf.float32)
-    print('load data from  ' + datafile + '  -> ' +
+    print('Loading data from  ' + datafile + '  -> ' +
           str(len(hits[:])) + '  events loaded')  # type: ignore
     return hits
 
@@ -159,3 +176,51 @@ def filter_events(y: np.ndarray) -> np.ndarray:
           f'\nRemaining events: {len(filtered_events)}')
 
     return filtered_events
+
+
+def load_sim_data():
+    # load simulation data
+    idealhough = loadParameters('data/sim_data/targets_ring_hough_ideal.csv')
+    hough = loadParameters('data/sim_data/targets_ring_hough.csv')
+    sim = np.array(loadFeatures('data/sim_data/features_denoise.csv'))
+
+    # apply some cuts on both idealhough and hough
+    indices = filter_events(idealhough)
+    indices = filter_events(hough[indices])
+
+    sim, idealhough, hough = sim[indices], idealhough[indices], hough[indices]
+
+    idealhough = idealhough.reshape(idealhough.shape[0], 5, 5)
+
+    hough = hough.reshape(hough.shape[0], 5, 5)
+
+    return sim, idealhough, hough
+
+
+def hits_on_ring(y_true, y_pred):
+    pars = y_pred[..., :5]
+    hits = y_true[..., 5:]
+    hits = hits.reshape((y_pred.shape[0], y_pred.shape[1], -1, 2))
+
+    # check the number of hits on the ring for each ring in each event
+    # and store it in nof_hits
+    nof_hits = np.zeros((y_pred.shape[0], y_pred.shape[1]))
+    for i, j, k in np.ndindex((y_pred.shape[0], y_pred.shape[1], (y_pred.shape[2]-5) // 2)):
+        hits_ = hits[i, j, k]
+        pars_ = pars[i, j]
+        if np.all(hits_.numpy() != 0.):
+            # equal_zero = tf.reduce_all(tf.equal(hits_, tf.constant(0.)))
+            # if not equal_zero:
+            x = hits_[1] + 0.5 - pars_[0]
+            y = hits_[0] + 0.5 - pars_[1]
+            if np.isclose(np.sqrt(x**2 + y**2), pars_[2], atol=1.5):
+                nof_hits[i, j] += 1
+
+    # if there are less than 10 hits on a ring with ring parameters
+    # that are not all zero, add a penalty of 1 to the loss
+    penalty = np.zeros((y_pred.shape[0], y_pred.shape[1]))
+    for i, j in np.ndindex((y_pred.shape[0], y_pred.shape[1])):
+        if nof_hits[i, j] < 7 and not np.all(y_true[i, j, :5] == 0):
+            penalty[i, j] = 1
+
+    return np.sum(penalty)

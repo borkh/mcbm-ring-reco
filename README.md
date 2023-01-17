@@ -90,9 +90,21 @@ pip install -r requirements.txt
     optimal initial and maximum learning rates for the `1cycle` policy can be
     determined. These values and other hyperparameters can be changed in
     `models/model.py`. The trained models will be saved in the
-    `models/checkpoints` directory.
+    `models/checkpoints` directory. After training, some predictions on the
+    validation data will be made and the results will be plotted.
 
-5. To convert the trained model to ONNX format, run the following command:
+5. To evaluate the trained model, run the following command:
+   ```
+   python evaluate.py --model_path=<MODEL_PATH> --nof_plots=<NOF_PLOTS>
+   ``` 
+   This will load the model specified by `<MODEL_PATH>`. To evaluate the model,
+   the loss and average prediction time will be calculated on the data in
+   `data/test`. Furthermore, the 50 worst predictions will be calculated and
+   plotted. Additionally, `data/sim_data` directory contains simulated data from
+   the mRICH detector. That data was created using the CbmRoot framework.  These
+   images will also be fitted and the first <NOF_PLOTS> results will be plotted.
+
+6. To convert the trained model to ONNX format, run the following command:
    ```
    python onnx/convert_tf2onnx.py --model_path=<MODEL_PATH>
    ``` 
@@ -104,4 +116,5 @@ pip install -r requirements.txt
    successful, the predictions of the TensorFlow and ONNX models will be
    compared and the relative and absolute differences between them will be
    printed to the console to ensure they are within an acceptable range.
-   Can also be run in an IPython shell.
+   Can also be run in an IPython shell. Note, that this script requires the
+   ROOT framework to be installed.

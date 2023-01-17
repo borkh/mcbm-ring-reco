@@ -300,9 +300,12 @@ class Display(np.ndarray):
             for x, y in zip(X[:, 0], X[:, 1]):
                 self[x, y] = 1
 
-            pars = [xshift+0.5, yshift+0.5, radius, radius, 0]
+            # add 0.5 pixel shift to the center of the ellipse to move it to the
+            # center of the pixel
+            pars = np.array([xshift+0.5, yshift+0.5, radius, radius, 0])
+
             # write parameters of each ring into self.params
-            self.params[n] = np.array(pars)
+            self.params[n, :5] = np.array(pars)
 
         if nof_noise_hits != 0:
             self._add_random_noise(nof_noise_hits)
@@ -401,8 +404,8 @@ if __name__ == "__main__":
         append = args.append
         no_visualization = args.no_visualization
     else:
-        target_dir = 'train'
-        nof_files = 8000000
+        target_dir = 'val'
+        nof_files = 500000
         append = False
         no_visualization = False
 
@@ -410,7 +413,7 @@ if __name__ == "__main__":
 
     if not no_visualization:
         # load sample images and labels to verify correctness of the dataset
-        datagen = DataGen(target_dir, batch_size=200)
+        datagen = DataGen(target_dir, batch_size=10)
         X, Y = datagen[0]
 
         display_images(X)

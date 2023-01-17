@@ -29,11 +29,6 @@ def predict_onnx():
     return onnx_output
 
 
-@measure_time
-def predict_keras(model, DataGen):
-    return model.predict(DataGen)
-
-
 def run(model_path):
     # Load the keras model
     subprocess.run(['python', '-m', 'tf2onnx.convert',
@@ -45,29 +40,33 @@ def run(model_path):
     test_gen = DataGen('../data/test', batch_size=2000)
 
     print("Running keras model...")
-    keras_output, keras_time = predict_keras(keras_model, test_gen)
+    keras_output, keras_time = predict(keras_model, test_gen)
     print(
         f'Keras prediction time: {keras_time:4.3f} s ({keras_time / test_gen.n:.5f} s per sample)')
 
     print("\nRunning onnx model...")
-    onnx_output, onnx_time = predict_onnx()
-    print(
-        f'ONNX prediction time: {onnx_time:5.3f} s ({onnx_time / test_gen.n:.5f} s per sample)')
+    try:
+        onnx_output, onnx_time = predict_onnx()
+        print(
+            f'ONNX prediction time: {onnx_time:5.3f} s ({onnx_time / test_gen.n:.5f} s per sample)')
 
-    abs_diff = np.abs(keras_output - onnx_output)
-    rel_diff = abs_diff / (np.maximum(np.abs(keras_output),
-                                      np.abs(onnx_output)) + 1e-12)
+        abs_diff = np.abs(keras_output - onnx_output)
+        rel_diff = abs_diff / (np.maximum(np.abs(keras_output),
+                                          np.abs(onnx_output)) + 1e-12)
 
-    atol = np.amax(abs_diff)
-    rtol = np.amax(rel_diff)
+        atol = np.amax(abs_diff)
+        rtol = np.amax(rel_diff)
 
-    print(f'\nMaximum absolute difference: {atol:.5f}')
-    print(f'Maximum relative difference: {rtol:.5f} -> {rtol * 100:.3f}%')
+        print(f'\nMaximum absolute difference: {atol:.5f}')
+        print(f'Maximum relative difference: {rtol:.5f} -> {rtol * 100:.3f}%')
 
-    check_if_close = np.allclose(
-        keras_output, onnx_output, atol=atol, rtol=rtol)
-    print(
-        f'Check if arrays are close within those tolerances: {check_if_close}')
+        check_if_close = np.allclose(
+            keras_output, onnx_output, atol=atol, rtol=rtol)
+        print(
+            f'Check if arrays are close within those tolerances: {check_if_close}')
+    except Exception as e:
+        print(e)
+        onnx_output = None
 
     return keras_output, onnx_output
 
