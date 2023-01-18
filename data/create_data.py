@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 
@@ -381,40 +382,64 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
 
 
 if __name__ == "__main__":
+    """
+    This script is used to generate event display images and corresponding
+    labels, and adds them to a dataset. The event displays are created by adding
+    ellipses with a given number of hits and noise hits to a display. The labels
+    are the parameters of the ellipses. The dataset is used to train a
+    convolutional neural network to reconstruct the parameters of the ellipses
+    from the event display images.
+
+    When run as the main file, it uses argparse to take the target directory and
+    number of files as command line arguments. The script takes three parameters
+    as input:
+
+        target_dir: The directory to save the dataset to. 
+        n_files: The size of the dataset to create, i.e., the number of event
+            display images and labels.
+        append: If set, append the generated event displays and labels to an
+            existing dataset. If not set, delete the existing dataset and create a new
+            one. Permission will be asked before deleting the existing dataset.
+    For example:
+        `python data/create_dataset.py --target_dir=data/train --n_files=1000 --append`
+    """
     try:
         __IPYTHON__  # type: ignore
     except NameError:
         parser = argparse.ArgumentParser()
         parser.add_argument('--target_dir', type=str, required=True,
                             help='The directory to save the dataset to.')
-        parser.add_argument('--nof_files', type=int, required=True,
+        parser.add_argument('--n_files', type=int, required=True,
                             help='The number of files to create.')
         parser.add_argument('--append', action='store_true', required=False,
                             help='''If set, append the generated event displays and
                             labels to an existing dataset. If not set, delete the
                             existing dataset and create a new one.''')
-        parser.add_argument('--no_visualization', action='store_true', required=False,
-                            help='''If set, do not visualize the generated images
-                            after creation. If not set, a few sample images are
-                            displayed after creation.''')
         args = parser.parse_args()
 
         target_dir = args.target_dir
-        nof_files = args.nof_files
+        n_files = args.n_files
         append = args.append
-        no_visualization = args.no_visualization
     else:
         target_dir = 'val'
-        nof_files = 500000
+        n_files = 500000
         append = False
-        no_visualization = False
 
-    add_to_dataset(target_dir=target_dir, n=nof_files, append=append)
+    # create target directory and subdirectories if they do not exist
+    ignore_rule = "*\n!.gitignore"
+    dirs = ['X', 'y']
+    for dir in dirs:
+        gitignore_path = f'{target_dir}/{dir}/.gitignore'
+        path = Path(gitignore_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+        path.write_text(ignore_rule)
 
-    if not no_visualization:
-        # load sample images and labels to verify correctness of the dataset
-        datagen = DataGen(target_dir, batch_size=10)
-        X, Y = datagen[0]
+    add_to_dataset(target_dir=target_dir, n=n_files, append=append)
 
-        display_images(X)
-        fit_rings(X, Y)
+    # load sample images and labels to verify correctness of the dataset
+    datagen = DataGen(target_dir, batch_size=10)
+    X, Y = datagen[0]
+
+    display_images(X)
+    fit_rings(X, Y)
