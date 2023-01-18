@@ -412,9 +412,9 @@ if __name__ == "__main__":
         parser.add_argument('--n_files', type=int, required=True,
                             help='The number of files to create.')
         parser.add_argument('--append', action='store_true', required=False,
-                            help='''If set, append the generated event displays and
-                            labels to an existing dataset. If not set, delete the
-                            existing dataset and create a new one.''')
+                            help='''If set, append the data to an existing
+                            dataset. If not set, delete the existing dataset and
+                            create a new one.''')
         args = parser.parse_args()
 
         target_dir = args.target_dir

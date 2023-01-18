@@ -59,21 +59,18 @@ Keras API.
    ```
    python data/create_data.py --target_dir=<TARGET_DIR> --n_files=<N_FILES>
    ```
-   This needs to be run three times, once for each of the `data/train`,
-   `data/test` and `data/val` directories. The `--target_dir` argument specifies
-   the directory in which the data will be saved. The `--n_files` argument
-   specifies the number of files that will be created.
+   Alternatively, the file can be run in an IPython shell and the arguments can
+   be changed manually. This needs to be run three times, once for each of the
+   `data/train`, `data/test` and `data/val` directories. The `--target_dir`
+   argument specifies the directory in which the data will be saved. The
+   `--n_files` argument specifies the number of files that will be created.
 
-   Optionally, the `--append` flag can be used to append the data to existing files or to remove
-   existing files before creating new ones. The default is to remove existing
-   files. By default, the data is also visualized after creation. This can be
-   disabled by setting the `--visualize` flag to `False`.  For example, to
-   append 1000 files to the `data/train` directory without visualization, run:
-    Alternatively, the file can be run in an IPython shell and the arguments can
-    be changed manually. Make sure to also populate the `data/test` and
-    `data/val` directories with data before continuing.  
+   Optionally, the `--append` flag can be set to append the data to existing
+   files or to remove existing files before creating new ones. The default is to
+   remove existing files. By default, the data is also visualized after
+   creation.  
 
-4. Now, the model can be trained by running
+4. Now, the model can be trained by running:
    ```
    python train.py
    ``` 
@@ -84,7 +81,7 @@ Keras API.
    python train.py --target_dir=<TARGET_DIR> --val_dir=<VAL_DIR>
    ```
    The model can also be trained in an IPython shell and the arguments can be
-   changed manually.  You can also run the `LR range test` first by running
+   changed manually. You can also run the `LR range test` first by running:
    ```
    python train.py --target_dir=<TARGET_DIR> --find_lr_range
    ```
