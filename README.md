@@ -42,7 +42,7 @@ Keras API.
   project, including functions for visualizing the training data, fitting
   ellipses to the images, and measuring the execution time of other functions.
 
-## Usage
+## Installation
 
 1. Clone the repository
    ```
@@ -54,7 +54,9 @@ Keras API.
    pip install -r requirements.txt
    ```
 
-3. Before training the model, the training, testing and validation data needs to
+## Usage
+
+1. Before training the model, the training, testing and validation data needs to
    be created. This can be done by running the following command:
    ```
    python data/create_data.py --target_dir=<TARGET_DIR> --n_files=<N_FILES>
@@ -70,7 +72,7 @@ Keras API.
    remove existing files. By default, the data is also visualized after
    creation.  
 
-4. Now, the model can be trained by running:
+2. Now, the model can be trained by running:
    ```
    python train.py
    ``` 
@@ -94,7 +96,7 @@ Keras API.
    `models/checkpoints` directory. After training, some predictions on the
    validation data will be made and the results will be plotted.
 
-5. To evaluate the trained model, run the following command:
+3. To evaluate the trained model, run the following command:
    ```
    python evaluate.py --model_path=<MODEL_PATH> --n_plots=<N_PLOTS>
    ``` 
@@ -105,7 +107,7 @@ Keras API.
    the mRICH detector. That data was created using the CbmRoot framework.  These
    images will also be fitted and the first <N_PLOTS> results will be plotted.
 
-6. To convert the trained model to ONNX format, run the following command:
+4. To convert the trained model to ONNX format, run the following command:
    ```
    python onnx/convert_tf2onnx.py --model_path=<MODEL_PATH>
    ``` 
