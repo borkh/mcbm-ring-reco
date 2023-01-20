@@ -44,14 +44,19 @@ Keras API.
 
 ## Installation
 
+To get started, install Anaconda/Miniconda, git and the appropriate versions of
+CUDA and cuDNN, if you have a GPU that is compatible with TensorFlow. For more
+details, refer to the TensorFlow documentation:
+https://www.tensorflow.org/install/gpu
+
 1. Clone the repository
    ```
    git clone https://github.com/borkh/mcbm-ring-reco
    ```
 
-2. Install the required packages
+2. Create a new conda environment and install the required packages
    ```
-   pip install -r requirements.txt
+   conda env create -f environment.yml
    ```
 
 ## Usage
@@ -70,7 +75,7 @@ Keras API.
    Optionally, the `--append` flag can be set to append the data to existing
    files or to remove existing files before creating new ones. The default is to
    remove existing files. By default, the data is also visualized after
-   creation.  
+   creation. Set the `--silent` flag to disable this.
 
 2. Now, the model can be trained by running:
    ```
