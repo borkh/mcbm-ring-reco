@@ -102,7 +102,7 @@ def train(c=None) -> None:
         try:
             # define data generators for training and validation
             train_gen = DataGen(train_dir, batch_size=c.batch_size)
-            val_gen = DataGen('data/val', batch_size=500)
+            val_gen = DataGen(val_dir, batch_size=32)
 
             # calculate the number of steps per epoch and the total number of steps
             spe = train_gen.n // c.batch_size
@@ -114,7 +114,6 @@ def train(c=None) -> None:
 
             opt = tf.keras.optimizers.SGD(
                 c.init_lr, momentum=0.95, nesterov=True)
-            # , run_eagerly=True)
             model.compile(optimizer=opt, loss=custom_loss)
 
             model.fit(train_gen,
@@ -129,9 +128,7 @@ def train(c=None) -> None:
             lr_schedule.plot()
 
             X, y = val_gen[0]
-            predictions, pred_time = predict(model, X)
-            print(
-                f'Inference took {pred_time}s to run. {pred_time / len(X)}s per event')
+            predictions, _ = predict(model, X)
             fit_rings(X, predictions)
 
         except Exception:

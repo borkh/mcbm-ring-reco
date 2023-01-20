@@ -11,6 +11,7 @@ sys.path.append('.')
 sys.path.append('..')
 from utils.utils import *  # nopep8
 from data.create_data import DataGen  # nopep8
+from models.model import custom_loss  # nopep8
 
 
 @measure_time
@@ -35,7 +36,8 @@ def run(model_path):
                     '--saved-model', model_path, '--output', '../models/model.onnx'])
 
     print(f'Loading keras model {model_path}...')
-    keras_model = tf.keras.models.load_model(model_path)
+    keras_model = tf.keras.models.load_model(model_path,
+                                             custom_objects={'custom_loss': custom_loss})
 
     test_gen = DataGen('../data/test', batch_size=2000)
 

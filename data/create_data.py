@@ -415,15 +415,20 @@ if __name__ == "__main__":
                             help='''If set, append the data to an existing
                             dataset. If not set, delete the existing dataset and
                             create a new one.''')
+        parser.add_argument('--silent', action='store_true', required=False,
+                            help='''If set, do not visualize sample images of
+                            the dataset after generating it.''')
         args = parser.parse_args()
 
         target_dir = args.target_dir
         n_files = args.n_files
         append = args.append
+        silent = args.silent
     else:
         target_dir = 'val'
-        n_files = 500000
+        n_files = 500
         append = False
+        silent = False
 
     # create target directory and subdirectories if they do not exist
     ignore_rule = "*\n!.gitignore"
@@ -437,9 +442,10 @@ if __name__ == "__main__":
 
     add_to_dataset(target_dir=target_dir, n=n_files, append=append)
 
-    # load sample images and labels to verify correctness of the dataset
-    datagen = DataGen(target_dir, batch_size=10)
-    X, Y = datagen[0]
+    if not silent:
+        # load sample images and labels to verify correctness of the dataset
+        datagen = DataGen(target_dir, batch_size=10)
+        X, Y = datagen[0]
 
-    display_images(X)
-    fit_rings(X, Y)
+        # display_images(X)
+        fit_rings(X, Y)
