@@ -267,4 +267,4 @@ dependencies:
       - kiwisolver==1.4.4
       - matplotlib==3.6.3
       - pillow==9.4.0
-prefix: /home/robin/.conda/envs/cbm
+prefix: ~/.conda/envs/cbm

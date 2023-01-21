@@ -52,6 +52,7 @@ https://www.tensorflow.org/install/gpu
 1. Clone the repository
    ```
    git clone https://github.com/borkh/mcbm-ring-reco
+   cd mcbm-ring-reco
    ```
 
 2. Create a new conda environment and install the required packages
@@ -75,7 +76,8 @@ https://www.tensorflow.org/install/gpu
    Optionally, the `--append` flag can be set to append the data to existing
    files or to remove existing files before creating new ones. The default is to
    remove existing files. By default, the data is also visualized after
-   creation. Set the `--silent` flag to disable this.
+   creation an. Set the `--silent` flag to disable this. Nonetheless, the
+   images will still be saved in `plots`.
 
 2. Now, the model can be trained by running:
    ```
@@ -99,7 +101,8 @@ https://www.tensorflow.org/install/gpu
    determined. These values and other hyperparameters can be changed in
    `models/model.py`. The trained models will be saved in the
    `models/checkpoints` directory. After training, some predictions on the
-   validation data will be made and the results will be plotted.
+   validation data will be made and the results will be plotted. Set the
+   `--silent` flag to only save the plots without showing them.
 
 3. To evaluate the trained model, run the following command:
    ```
@@ -111,6 +114,7 @@ https://www.tensorflow.org/install/gpu
    plotted. Additionally, `data/sim_data` directory contains simulated data from
    the mRICH detector. That data was created using the CbmRoot framework.  These
    images will also be fitted and the first <N_PLOTS> results will be plotted.
+   Set the `--silent` flag to only save the plots without showing them.
 
 4. To convert the trained model to ONNX format, run the following command:
    ```

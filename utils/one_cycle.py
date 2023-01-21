@@ -1,8 +1,11 @@
 import numpy as np
 import tensorflow as tf
 import plotly.express as px
-from plotly.subplots import make_subplots
 import plotly.io as pio
+from plotly.subplots import make_subplots
+from pathlib import Path
+
+root_dir = Path(__file__).parent.parent
 
 
 class CosineAnnealer:
@@ -139,4 +142,5 @@ class OneCycleSchedule(tf.keras.callbacks.Callback):
         fig.show()
 
         # save the plot
-        pio.write_image(fig, 'plots/one_cycle.png')
+        plot_path = str(Path(root_dir, 'plots', 'one_cycle.png'))
+        pio.write_image(fig, plot_path)

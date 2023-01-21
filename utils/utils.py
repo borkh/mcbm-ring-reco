@@ -1,3 +1,4 @@
+import os
 import cv2
 import numpy as np
 import pandas as pd
@@ -6,9 +7,13 @@ import time
 import plotly.express as px
 import plotly.graph_objs as go
 import plotly.subplots as sp
+import plotly.io as pio
 import sys
+from pathlib import Path
 
 np.set_printoptions(threshold=sys.maxsize)
+
+root_dir = Path(__file__).parent.parent
 
 
 def measure_time(func):
@@ -76,7 +81,7 @@ def plot_single_event(image: np.ndarray, Y1=None, Y2=None, Y3=None,
     return image
 
 
-def display_images(imgs: np.ndarray, col_width: int = 5, title="") -> None:
+def display_images(imgs: np.ndarray, col_width: int = 5, title="", silent=False) -> None:
     """
     Display a set of images in a grid.
 
@@ -99,13 +104,14 @@ def display_images(imgs: np.ndarray, col_width: int = 5, title="") -> None:
                         height=700)
         fig.update_layout(title={'text': title, 'font': {
             'size': 24, 'color': 'red'}})
-        fig.show()
+        if not silent:
+            fig.show()
     except ValueError as e:
         print(f'\nError: {e}')
         print(f'The number of images must be at least {col_width}.')
 
 
-def fit_rings(images, params, title="") -> None:
+def fit_rings(images, params, title="", silent=False) -> None:
     """
     Uses the `plot_single_event` function to fit rings to a set of images
     with the given parameters. The resulting images are then displayed in a
@@ -122,12 +128,14 @@ def fit_rings(images, params, title="") -> None:
             (x, y, major axis, minor axis, angle).
         title : str, optional
             The title to display above the grid of images.
+        silent : bool, optional
+            If True, the images will not be displayed.
     """
     if images.shape[-1] == 1:
         images = np.repeat(images, 3, axis=-1)
     ring_fits = np.array([plot_single_event(x, y)
                           for x, y in zip(images, params)])
-    display_images(ring_fits, title=title)
+    display_images(ring_fits, title=title, silent=silent)
 
 
 # functions for reading .csv file from simulation data
@@ -149,7 +157,7 @@ def loadFeatures(datafile, pixel_x=32, pixel_y=72):
         hits_temp, clip_value_min=0., clip_value_max=1.)
     hits = tf.cast(hits_temp[..., tf.newaxis],  # type: ignore
                    dtype=tf.float32)
-    print('Loading data from  ' + datafile + '  -> ' +
+    print('Loading data from  ' + str(datafile) + '  -> ' +
           str(len(hits[:])) + '  events loaded')  # type: ignore
     return hits
 
@@ -231,9 +239,14 @@ def load_sim_data():
     hough : numpy array
         The Hough transform parameters for each image.
     """
-    idealhough = loadParameters('data/sim_data/targets_ring_hough_ideal.csv')
-    hough = loadParameters('data/sim_data/targets_ring_hough.csv')
-    sim = np.array(loadFeatures('data/sim_data/features_denoise.csv'))
+    idealhough_path = str(Path(root_dir, 'data', 'sim_data',
+                               'targets_ring_hough_ideal.csv'))
+    idealhough = loadParameters(idealhough_path)
+    hough_path = str(
+        Path(root_dir, 'data', 'sim_data', 'targets_ring_hough.csv'))
+    hough = loadParameters(hough_path)
+    sim_path = str(Path(root_dir, 'data', 'sim_data', 'features_denoise.csv'))
+    sim = np.array(loadFeatures(sim_path))
 
     # apply some cuts on both idealhough and hough
     indices = filter_events(idealhough)
@@ -247,7 +260,7 @@ def load_sim_data():
     return sim, idealhough, hough
 
 
-def ring_params_hist(y, title='Ring Parameters Histograms'):
+def ring_params_hist(y, title='Ring Parameters Histograms', silent=False):
     """
     This function creates a pd.DataFrame from the ring parameters and plots
     histograms of each parameter. These might be useful for visualizing the
@@ -296,7 +309,11 @@ def ring_params_hist(y, title='Ring Parameters Histograms'):
 
     fig.update_layout(title={'text': title, 'font': {
         'size': 24, 'color': 'red'}})
-    fig.show()
+    plot_path = Path(root_dir, 'plots', f'{title}.png')
+    print(f'Saving plot to {plot_path}...')
+    pio.write_image(fig, plot_path)
+    if not silent:
+        fig.show()
 
 
 def hits_on_ring(y_true, y_pred):

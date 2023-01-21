@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 import traceback
 
 import absl.logging
@@ -20,13 +21,18 @@ from tensorflow.keras.optimizers import SGD  # type: ignore
 from wandb.keras import WandbCallback
 
 import wandb
-from data.create_data import DataGen
-from models.model import *
-from utils.one_cycle import *
-from utils.utils import *
+from pathlib import Path
+
+root_dir = Path(__file__).parent
+sys.path.append(str(root_dir))
+
+from utils.utils import *  # nopep8
+from utils.one_cycle import *  # nopep8
+from models.model import *  # nopep8
+from data.create_data import DataGen  # nopep8
 
 
-def lr_range_test(training_size=10000, start_lr=1e-7, end_lr=5, epochs=5) -> None:
+def lr_range_test(start_lr=1e-7, end_lr=5, epochs=5) -> None:
     """
     Find the optimal learning rate range for the model.
 
@@ -42,6 +48,7 @@ def lr_range_test(training_size=10000, start_lr=1e-7, end_lr=5, epochs=5) -> Non
         end_lr (float, optional): The final learning rate. Default is 5.
         epochs (int, optional): The number of epochs to train the model for. Default is 5.
     """
+    training_size = int(n_training_files * 0.05)
     os.environ['WANDB_MODE'] = 'dryrun'
     with wandb.init(config=None):  # type: ignore
         c = wandb.config
@@ -60,7 +67,9 @@ def lr_range_test(training_size=10000, start_lr=1e-7, end_lr=5, epochs=5) -> Non
         lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
                        batch_size=c.batch_size, epochs=epochs)
         lr_finder.plot_loss(n_skip_beginning=20, n_skip_end=3)
-        plt.savefig('plots/lr_range_test.png')
+
+        plot_path = str(Path(root_dir, 'plots', 'lr_range_test.png'))
+        plt.savefig(plot_path)
         plt.show()
 
 
@@ -91,10 +100,10 @@ def train(c=None) -> None:
         None
     """
 
-    nof_files = len(os.listdir(train_dir + '/X'))
-    name = f'{nof_files//1000000}M'
+    name = f'{n_training_files//1000000}M'
     now = datetime.datetime.now().strftime('%Y%m%d%H%M')
-    model_path = f'models/checkpoints/{name}-{now}.model'
+    model_path = Path(root_dir, 'models', 'checkpoints',
+                      f'{name}-{now}.model')
 
     with wandb.init(config=None):  # type: ignore
         c = wandb.config
@@ -127,9 +136,9 @@ def train(c=None) -> None:
 
             lr_schedule.plot()
 
-            X, y = val_gen[0]
+            X, _ = val_gen[0]
             predictions, _ = predict(model, X)
-            fit_rings(X, predictions)
+            fit_rings(X, predictions, title='Model Predictions on Validation Data', silent=silent)
 
         except Exception:
             print(traceback.format_exc())
@@ -140,26 +149,37 @@ if __name__ == "__main__":
         __IPYTHON__  # type: ignore
     except NameError:
         parser = argparse.ArgumentParser()
-        parser.add_argument('--train_dir', type=str, default='data/train',
+        parser.add_argument('--train_dir', type=str,
+                            default=str(Path(root_dir, 'data', 'train')),
                             help='The directory containing the training data.')
-        parser.add_argument('--val_dir', type=str, default='data/val',
+        parser.add_argument('--val_dir', type=str,
+                            default=str(Path(root_dir, 'data', 'val')),
                             help='The directory containing the validation data.')
         parser.add_argument('--find_lr_range', action='store_true',
                             help='''Run the learning rate range finder to determine
                             the optimal learning rate range.''')
+        parser.add_argument('--silent', action='store_true',
+                            help='''If set, plots will not be shown, but saved
+                            to the plots directory.''')
         args = parser.parse_args()
 
-        train_dir = args.train_dir
-        val_dir = args.val_dir
+        train_dir = Path(args.train_dir)
+        val_dir = Path(args.val_dir)
         find_lr_range = args.find_lr_range
+        silent = args.silent
     else:
-        train_dir = 'data/train'
-        val_dir = 'data/val'
-        find_lr_range = False
+        train_dir = Path(root_dir, 'data', 'train')
+        val_dir = Path(root_dir, 'data', 'val')
+        find_lr_range = True
+        silent = False
 
-    # load sample png form 'data/train' to get input shape
+    n_training_files = len(list(Path(train_dir, 'X').glob('*.png')))
+
+    # load sample png form 'data/train/X' to get input shape
+    sample_img_path = Path(train_dir, 'X', '0.png')
+    print(sample_img_path)
     input_shape_ = cv2.imread(
-        train_dir + '/X/0.png')[..., :1].shape  # type: ignore
+        str(sample_img_path))[..., :1].shape  # type: ignore
 
     if find_lr_range:
         sweep_id = wandb.sweep(run_config)

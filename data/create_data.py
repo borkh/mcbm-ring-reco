@@ -12,8 +12,8 @@ from numpy.random import choice
 from sklearn.datasets import make_circles
 from tqdm import tqdm
 
-sys.path.append('.')
-sys.path.append('..')
+root_dir = Path(__file__).parent.parent
+sys.path.append(str(root_dir))
 
 from utils.utils import *  # nopep8
 
@@ -43,8 +43,7 @@ class DataGen(tf.keras.utils.Sequence):
     def __init__(self, target_dir, batch_size=32):
         self.target_dir = tf.compat.as_str_any(target_dir)
         self.batch_size = batch_size
-        n = os.listdir(f'{self.target_dir}/X')
-        self.n = len([file for file in n if file.endswith('.png')])
+        self.n = len(list(Path(self.target_dir, 'X').glob('*.png')))
         self.current_index = 0
 
     def __iter__(self):
@@ -64,11 +63,11 @@ class DataGen(tf.keras.utils.Sequence):
         X = []
         y = []
         for i in range(start, end):
-            x_path = f'{self.target_dir}/X/{i}.png'
-            y_path = f'{self.target_dir}/y/{i}.npy'
-            X.append(cv2.imread(x_path, cv2.IMREAD_GRAYSCALE)  # type: ignore
+            x_path = Path(self.target_dir, 'X', f'{i}.png')
+            y_path = Path(self.target_dir, 'y', f'{i}.npy')
+            X.append(cv2.imread(str(x_path), cv2.IMREAD_GRAYSCALE)  # type: ignore
                      [:, :, np.newaxis] / 255.)
-            y.append(np.load(y_path))
+            y.append(np.load(str(y_path)))
         return np.array(X), np.array(y)
 
     def __len__(self):
@@ -312,6 +311,11 @@ class Display(np.ndarray):
             self._add_random_noise(nof_noise_hits)
 
 
+def delete_files_by_extension(directory, extension):
+    for file in tqdm(Path(directory).glob(f"*{extension}")):
+        file.unlink()
+
+
 def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) -> None:
     """
     Adds event display images and corresponding labels to a dataset.
@@ -351,22 +355,20 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
 
     range_ = range(0)
     if append:
-        range_ = range(len(os.listdir(f'{target_dir}/X')) - 1,
-                       len(os.listdir(f'{target_dir}/X')) - 1 + n)
+        current_size = len(os.listdir(Path(target_dir, 'X')))
+        range_ = range(current_size - 1, current_size - 1 + n)
+
     else:
         if input('Are you sure you want to delete the existing dataset? (y/n) ') == 'y':
-            print(f'Deleting files in {target_dir}/X...')
-            x_files = [f for f in os.listdir(f'{target_dir}/X')
-                       if f.endswith('.png')]
-            for file in tqdm(x_files):
-                os.remove(f'{target_dir}/X/{file}')
+            print(f'Deleting files in {target_dir_X}...')
+            delete_files_by_extension(target_dir_X, '.png')
 
-            print(f'Deleting files in {target_dir}/y...')
-            y_files = [f for f in os.listdir(f'{target_dir}/y')
-                       if f.endswith('.npy')]
-            for file in tqdm(y_files):
-                os.remove(f'{target_dir}/y/{file}')
+            print(f'Deleting files in {target_dir_y}...')
+            delete_files_by_extension(target_dir_y, '.npy')
             range_ = range(n)
+        else:
+            print('Aborting...')
+            sys.exit()
 
     print(f'Creating images and labels in {target_dir}...')
     for i in tqdm(range_):
@@ -376,8 +378,10 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
                        choice(range(min_noise_hits, max_noise_hits)))
         y = np.array(x.params)
 
-        cv2.imwrite(f'{target_dir}/X/{i}.png', 255*x)
-        np.save(f'{target_dir}/y/{i}.npy', y)
+        im_path = Path(target_dir_X, f'{i}.png')
+        label_path = Path(target_dir_y, f'{i}.npy')
+        cv2.imwrite(str(im_path), 255*x)
+        np.save(str(label_path), y)
     print(f"Done. Created {n} images inside directory '{target_dir}'.")
 
 
@@ -420,21 +424,23 @@ if __name__ == "__main__":
                             the dataset after generating it.''')
         args = parser.parse_args()
 
-        target_dir = args.target_dir
+        target_dir = Path(args.target_dir).resolve()
         n_files = args.n_files
         append = args.append
         silent = args.silent
     else:
-        target_dir = 'val'
+        target_dir = Path(root_dir, 'data', 'train')
         n_files = 500
-        append = False
+        append = True
         silent = False
+
+    target_dir_X = Path(target_dir, 'X')
+    target_dir_y = Path(target_dir, 'y')
 
     # create target directory and subdirectories if they do not exist
     ignore_rule = "*\n!.gitignore"
-    dirs = ['X', 'y']
-    for dir in dirs:
-        gitignore_path = f'{target_dir}/{dir}/.gitignore'
+    for dir in [target_dir_X, target_dir_y]:
+        gitignore_path = Path(dir, '.gitignore')
         path = Path(gitignore_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
@@ -442,10 +448,9 @@ if __name__ == "__main__":
 
     add_to_dataset(target_dir=target_dir, n=n_files, append=append)
 
-    if not silent:
-        # load sample images and labels to verify correctness of the dataset
-        datagen = DataGen(target_dir, batch_size=10)
-        X, Y = datagen[0]
+    # load sample images and labels to verify correctness of the dataset
+    datagen = DataGen(target_dir, batch_size=10)
+    X, Y = datagen[0]
 
-        # display_images(X)
-        fit_rings(X, Y)
+    # display_images(X)
+    fit_rings(X, Y, title=f'Sample images', silent=silent)
