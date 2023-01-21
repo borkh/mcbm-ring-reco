@@ -10,6 +10,7 @@ import numpy as np
 import tensorflow as tf
 from numpy.random import choice
 from sklearn.datasets import make_circles
+from sklearn.preprocessing import normalize
 from tqdm import tqdm
 
 root_dir = Path(__file__).parent.parent
@@ -291,7 +292,7 @@ class Display(np.ndarray):
             yshift, xshift = divmod(indices[n], self.shape[1])
 
             radius: int = np.round(np.random.uniform(3.0, 8.0), 1)
-            radius_noise: float = np.random.uniform(0.04, 0.1)
+            radius_noise: float = np.random.uniform(0.04, 0.08)
 
             X = self._add_ellipse(xshift, yshift, radius,
                                   radius_noise, hits_per_ring)
@@ -372,7 +373,15 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
 
     print(f'Creating images and labels in {target_dir}...')
     for i in tqdm(range_):
-        nof_rings = choice(range(minrings, maxrings + 1))
+        # create a list of probabilities for the number of rings
+        # +2 to shift the probabilities towards the lower end of the range
+        # for example, if the range is [0, 4], the list will be
+        # [0.1, 0.15, 0.2, 0.25, 0.3]
+        lst = [i for i in range(minrings + 1, maxrings + 1 + 1)]
+        # normalize the list to sum to 1
+        lst = normalize([lst], norm='l1')[0]
+
+        nof_rings = choice(range(minrings, maxrings + 1), p=lst)
         x = Display(input_shape)
         x.add_ellipses(nof_rings, (minhits, maxhits),
                        choice(range(min_noise_hits, max_noise_hits)))
@@ -449,8 +458,11 @@ if __name__ == "__main__":
     add_to_dataset(target_dir=target_dir, n=n_files, append=append)
 
     # load sample images and labels to verify correctness of the dataset
-    datagen = DataGen(target_dir, batch_size=10)
-    X, Y = datagen[0]
+    datagen = DataGen(target_dir, batch_size=200)
+    X, y = datagen[0]
 
     # display_images(X)
-    fit_rings(X, Y, title=f'Sample images', silent=silent)
+    fit_rings(X, y, title=f'Sample images', silent=silent)
+
+    y = np.array([datagen[i][1] for i in range(10)])
+    ring_params_hist(y, title='Histograms of generated data', silent=silent)

@@ -138,7 +138,8 @@ def train(c=None) -> None:
 
             X, _ = val_gen[0]
             predictions, _ = predict(model, X)
-            fit_rings(X, predictions, title='Model Predictions on Validation Data', silent=silent)
+            fit_rings(
+                X, predictions, title='Model Predictions on Validation Data', silent=silent)
 
         except Exception:
             print(traceback.format_exc())
@@ -170,14 +171,13 @@ if __name__ == "__main__":
     else:
         train_dir = Path(root_dir, 'data', 'train')
         val_dir = Path(root_dir, 'data', 'val')
-        find_lr_range = True
+        find_lr_range = False
         silent = False
 
     n_training_files = len(list(Path(train_dir, 'X').glob('*.png')))
 
     # load sample png form 'data/train/X' to get input shape
     sample_img_path = Path(train_dir, 'X', '0.png')
-    print(sample_img_path)
     input_shape_ = cv2.imread(
         str(sample_img_path))[..., :1].shape  # type: ignore
 
