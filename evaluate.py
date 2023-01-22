@@ -1,5 +1,5 @@
-# %%
 import os
+import sys
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 import tensorflow as tf
 import argparse
@@ -43,20 +43,33 @@ hist_size = 100000
 test_size = len(list(Path(test_dir, 'y').glob('*.npy')))
 batch_size = test_size // n_worst
 
-# %%
 
 print(f'Loading model {model_path}...')
 model = tf.keras.models.load_model(model_path,
                                    custom_objects={'custom_loss': custom_loss})
 dg = DataGen(test_dir, batch_size=batch_size)
 
+# _______________________________________________________________________________
+# Creating histograms of test data
+# _______________________________________________________________________________
+
 print(f'\nPlotting test data histograms of size {hist_size}...')
 y_df = np.array([dg[j][1] for j in range(hist_size//batch_size)])
 ring_params_hist(y_df, title='Test data histograms', silent=silent)
 
+
+# _______________________________________________________________________________
+# Model evaluation
+# _______________________________________________________________________________
+
 print(f'\nEvaluating model on {dg.n} events from test data...')
 eval_t = evaluate(model, dg)[1]
 print(f'Evaluation of {dg.n} took {eval_t}s to run. {eval_t/dg.n}s per event')
+
+
+# _______________________________________________________________________________
+# Selection of worst predictions
+# _______________________________________________________________________________
 
 print(f'''\nSplitting test data into {n_worst} batches of size {batch_size}
 and selecting the worst predictions for each batch...''')

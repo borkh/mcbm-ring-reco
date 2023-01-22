@@ -112,9 +112,13 @@ https://www.tensorflow.org/install/gpu
    the loss and average prediction time will be calculated on the data in
    `data/test`. Furthermore, 50 of the worst predictions will be calculated and
    plotted. Additionally, `data/sim_data` directory contains simulated data from
-   the mRICH detector. That data was created using the CbmRoot framework.  These
+   the mRICH detector. That data was created using the CbmRoot framework. These
    images will also be fitted and the first <N_PLOTS> results will be plotted.
+
    Set the `--silent` flag to only save the plots without showing them.
+   If the `--model_path` argument is not specified, the latest model in the
+   `models/checkpoints` directory will be used. The default value for
+   `--n_plots` is 200.
 
 4. To convert the trained model to ONNX format, run the following command:
    ```

@@ -14,6 +14,7 @@ from pathlib import Path
 np.set_printoptions(threshold=sys.maxsize)
 
 root_dir = Path(__file__).parent.parent
+pio.templates.default = 'presentation'
 
 
 def measure_time(func):
@@ -101,9 +102,7 @@ def display_images(imgs: np.ndarray, col_width: int = 5, title="", silent=False)
         imgs = imgs.reshape(
             imgs.shape[0] // col_width, col_width, *imgs.shape[1:])
         fig = px.imshow(imgs, animation_frame=0, facet_col=1, binary_string=True,
-                        height=700)
-        fig.update_layout(title={'text': title, 'font': {
-            'size': 24, 'color': 'red'}})
+                        height=700, title=title)
         if not silent:
             fig.show()
     except ValueError as e:
@@ -284,13 +283,14 @@ def ring_params_hist(y, title='Ring Parameters Histograms', silent=False):
     df = pd.DataFrame(y.reshape(-1, 25), columns=cols)
     df['n_rings'] = df[cols].apply(lambda x: np.sum(x != 0)//4, axis=1)
 
-    # TODO: Add a subplot for the number of rings
-
+    # add a column for the number of rings
+    columns = cols[:20]
+    columns.append('n_rings')
     # Create a subplot layout with 5 rows and 5 columns
-    fig = sp.make_subplots(rows=5, cols=5, subplot_titles=cols)
+    fig = sp.make_subplots(rows=5, cols=5, subplot_titles=columns)
 
     # iterate through the range
-    for i in range(5):
+    for i in range(4):
         # Create a histogram for x_i column and add it to the i-th row 1st column
         fig.add_trace(go.Histogram(
             x=df[f'x_{i}'], xbins=dict(start=0.1)), row=i+1, col=1)
@@ -307,9 +307,37 @@ def ring_params_hist(y, title='Ring Parameters Histograms', silent=False):
         fig.add_trace(go.Histogram(
             x=df[f'theta_{i}'], xbins=dict(start=0.1)), row=i+1, col=5)
 
-    fig.update_layout(title={'text': title, 'font': {
-        'size': 24, 'color': 'red'}})
+    fig.add_trace(go.Histogram(x=df['n_rings']), row=5, col=1)
+
+    fig.update_layout(title=title, width=1000)
+
     plot_path = Path(root_dir, 'plots', f'{title}.png')
+    print(f'Saving plot to {plot_path}...')
+    pio.write_image(fig, plot_path)
+    if not silent:
+        fig.show()
+
+
+def plot_lr_range(lr_finder, n_skip_beginning=20, n_skip_end=3, silent=False):
+    """
+    This function plots the loss vs learning rate for the learning rate range
+    test.
+
+    Parameters
+    ----------
+    lr_finder : lr_finder.LRFinder
+        The learning rate finder object.
+    n_skip_beginning : int
+        The number of batches to skip at the beginning.
+    n_skip_end : int
+        The number of batches to skip at the end.
+    """
+    fig = px.line(x=lr_finder.lrs[n_skip_beginning:-n_skip_end],
+                  y=lr_finder.losses[n_skip_beginning:-n_skip_end],
+                  labels={'x': 'Learning Rate (log scale)', 'y': 'Loss'},
+                  log_x=True, title='Loss vs Learning Rate')
+    fig.update_xaxes(exponentformat='power')
+    plot_path = Path(root_dir, 'plots', 'lr_range_test.png')
     print(f'Saving plot to {plot_path}...')
     pio.write_image(fig, plot_path)
     if not silent:

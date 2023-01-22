@@ -58,19 +58,15 @@ def lr_range_test(start_lr=1e-7, end_lr=5, epochs=5) -> None:
 
         model = build_model(input_shape_, c)
 
-        lr = 0.001
-        opt = SGD(lr, momentum=0.95)
+        opt = SGD(1e-5, momentum=0.95)
 
         model.compile(optimizer=opt, loss=custom_loss)
 
         lr_finder = LRFinder(model)
         lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
                        batch_size=c.batch_size, epochs=epochs)
-        lr_finder.plot_loss(n_skip_beginning=20, n_skip_end=3)
 
-        plot_path = str(Path(root_dir, 'plots', 'lr_range_test.png'))
-        plt.savefig(plot_path)
-        plt.show()
+        plot_lr_range(lr_finder, silent=silent)
 
 
 def train(c=None) -> None:
