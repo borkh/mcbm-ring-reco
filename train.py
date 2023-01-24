@@ -48,7 +48,8 @@ def lr_range_test(start_lr=1e-7, end_lr=5, epochs=5) -> None:
         end_lr (float, optional): The final learning rate. Default is 5.
         epochs (int, optional): The number of epochs to train the model for. Default is 5.
     """
-    training_size = int(n_training_files * 0.05)
+    n = int(n_training_files * 0.05)
+    training_size = n if n < 100000 else 100000
     os.environ['WANDB_MODE'] = 'dryrun'
     with wandb.init(config=None):  # type: ignore
         c = wandb.config

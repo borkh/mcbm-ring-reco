@@ -142,7 +142,8 @@ class OneCycleSchedule(tf.keras.callbacks.Callback):
                 fig.add_trace(figure['data'][trace],  row=1, col=i+1)
                 fig.update_xaxes(title_text='steps', row=1, col=i+1)
                 fig.update_yaxes(title_text=subplot_ytitles[i], row=1, col=i+1)
-        fig.update_layout(title_text='Learning rate and momentum schedule')
+        fig.update_layout(title_text='Learning rate and momentum schedule',
+                          modebar_add=["toggleSpikelines"])
         fig.show()
 
         # save the plot

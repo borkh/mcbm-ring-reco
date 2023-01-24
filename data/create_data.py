@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Union
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 
@@ -292,7 +293,7 @@ class Display(np.ndarray):
             yshift, xshift = divmod(indices[n], self.shape[1])
 
             radius: int = np.round(np.random.uniform(3.0, 8.0), 1)
-            radius_noise: float = np.random.uniform(0.04, 0.08)
+            radius_noise: float = np.random.uniform(0.04, 0.07)
 
             X = self._add_ellipse(xshift, yshift, radius,
                                   radius_noise, hits_per_ring)
@@ -317,7 +318,7 @@ def delete_files_by_extension(directory, extension):
         file.unlink()
 
 
-def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) -> None:
+def add_to_dataset(target_dir: Union[str, Path] = 'test', n: int = 100, append: bool = True) -> None:
     """
     Adds event display images and corresponding labels to a dataset.
 
@@ -352,7 +353,10 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
     input_shape = (72, 32, 1)
     minhits, maxhits = 8, 17
     minrings, maxrings = 0, 4
-    min_noise_hits, max_noise_hits = 0, 9
+    min_noise_hits, max_noise_hits = 0, 7
+
+    target_dir_X = Path(target_dir, 'X')
+    target_dir_y = Path(target_dir, 'y')
 
     range_ = range(0)
     if append:
@@ -360,7 +364,14 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
         range_ = range(current_size - 1, current_size - 1 + n)
 
     else:
-        if input('Are you sure you want to delete the existing dataset? (y/n) ') == 'y':
+        if force:
+            print(f'Deleting files in {target_dir_X}...')
+            delete_files_by_extension(target_dir_X, '.png')
+
+            print(f'Deleting files in {target_dir_y}...')
+            delete_files_by_extension(target_dir_y, '.npy')
+            range_ = range(n)
+        elif input('Are you sure you want to delete the existing dataset? [y/n] ') == 'y':
             print(f'Deleting files in {target_dir_X}...')
             delete_files_by_extension(target_dir_X, '.png')
 
@@ -377,7 +388,7 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
         # +2 to shift the probabilities towards the lower end of the range
         # for example, if the range is [0, 4], the list will be
         # [0.1, 0.15, 0.2, 0.25, 0.3]
-        lst = [i for i in range(minrings + 1, maxrings + 1 + 1)]
+        lst = [1, 2, 4, 2, 1]
         # normalize the list to sum to 1
         lst = normalize([lst], norm='l1')[0]
 
@@ -394,6 +405,26 @@ def add_to_dataset(target_dir: str = 'test', n: int = 100, append: bool = True) 
     print(f"Done. Created {n} images inside directory '{target_dir}'.")
 
 
+def make_dirs(target_dir: Union[str, Path]) -> None:
+    '''
+    Creates the subdirectories X and y inside the specified directory, and
+    creates a .gitignore file in each subdirectory.
+
+    Parameters:
+        target_dir (str): The directory to create the subdirectories in.
+    '''
+    target_dir_X = Path(target_dir, 'X')
+    target_dir_y = Path(target_dir, 'y')
+
+    ignore_rule = "*\n!.gitignore"
+    for dir in [target_dir_X, target_dir_y]:
+        gitignore_path = Path(dir, '.gitignore')
+        path = Path(gitignore_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+        path.write_text(ignore_rule)
+
+
 if __name__ == "__main__":
     """
     This script is used to generate event display images and corresponding
@@ -408,6 +439,9 @@ if __name__ == "__main__":
     as input:
 
         target_dir: The directory to save the dataset to. 
+        auto: If set, automatically create all three datasets, i.e., train, test,
+            and validation. The ratio of the number of files in each dataset is
+            8:1:1.
         n_files: The size of the dataset to create, i.e., the number of event
             display images and labels.
         append: If set, append the generated event displays and labels to an
@@ -420,49 +454,71 @@ if __name__ == "__main__":
         __IPYTHON__  # type: ignore
     except NameError:
         parser = argparse.ArgumentParser()
-        parser.add_argument('--target_dir', type=str, required=True,
-                            help='The directory to save the dataset to.')
+
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument('--target_dir', type=str,
+                           help='The directory to save the dataset to.')
+        group.add_argument('--auto', action='store_true',
+                           help='''If set, automatically create all three
+                            datasets, i.e., train, validation, and test.''')
+
         parser.add_argument('--n_files', type=int, required=True,
                             help='The number of files to create.')
         parser.add_argument('--append', action='store_true', required=False,
                             help='''If set, append the data to an existing
                             dataset. If not set, delete the existing dataset and
                             create a new one.''')
+        parser.add_argument('--force', action='store_true', required=False,
+                            help='''If set, delete the existing dataset without
+                            asking for permission.''')
         parser.add_argument('--silent', action='store_true', required=False,
                             help='''If set, do not visualize sample images of
                             the dataset after generating it.''')
         args = parser.parse_args()
 
-        target_dir = Path(args.target_dir).resolve()
+        target_dir = Path(args.target_dir).resolve(
+        ) if args.target_dir else None
+        auto = args.auto
         n_files = args.n_files
         append = args.append
+        force = args.force
         silent = args.silent
     else:
-        target_dir = Path(root_dir, 'data', 'train')
-        n_files = 500
-        append = True
+        auto = True
+        target_dir = Path(root_dir, 'data', 'train') if not auto else None
+        n_files = 10000
+        append = False
+        force = False
         silent = False
 
-    target_dir_X = Path(target_dir, 'X')
-    target_dir_y = Path(target_dir, 'y')
+    if target_dir is not None:
+        make_dirs(target_dir)
 
-    # create target directory and subdirectories if they do not exist
-    ignore_rule = "*\n!.gitignore"
-    for dir in [target_dir_X, target_dir_y]:
-        gitignore_path = Path(dir, '.gitignore')
-        path = Path(gitignore_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch()
-        path.write_text(ignore_rule)
+        add_to_dataset(target_dir=target_dir, n=n_files, append=append)
 
-    add_to_dataset(target_dir=target_dir, n=n_files, append=append)
+        # load sample images and labels to verify correctness of the dataset
+        datagen = DataGen(target_dir, batch_size=200)
+        X, y = datagen[0]
 
-    # load sample images and labels to verify correctness of the dataset
-    datagen = DataGen(target_dir, batch_size=200)
-    X, y = datagen[0]
+        # display_images(X)
+        fit_rings(X, y, title=f'Sample images', silent=silent)
 
-    # display_images(X)
-    fit_rings(X, y, title=f'Sample images', silent=silent)
+        y = np.array([datagen[i][1] for i in range(10)])
+        ring_params_hist(y, title='Histograms of created data', silent=silent)
+    elif auto:
+        for dataset, n in zip(['train', 'val', 'test'], [n_files, n_files//8, n_files//8]):
+            target_dir = Path(root_dir, 'data', dataset)
+            make_dirs(target_dir)
+            add_to_dataset(target_dir=target_dir, n=n, append=append)
 
-    y = np.array([datagen[i][1] for i in range(10)])
-    ring_params_hist(y, title='Histograms of generated data', silent=silent)
+        # load sample images and labels to verify correctness of the dataset
+        # only load the train dataset
+        target_dir = Path(root_dir, 'data', 'train')
+        datagen = DataGen(target_dir, batch_size=200)
+        X, y = datagen[0]
+
+        # display_images(X)
+        fit_rings(X, y, title=f'Sample images', silent=silent)
+
+        y = np.array([datagen[i][1] for i in range(10)])
+        ring_params_hist(y, title='Histograms of created data', silent=silent)

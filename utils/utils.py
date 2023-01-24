@@ -309,7 +309,7 @@ def ring_params_hist(y, title='Ring Parameters Histograms', silent=False):
 
     fig.add_trace(go.Histogram(x=df['n_rings']), row=5, col=1)
 
-    fig.update_layout(title=title, width=1000)
+    fig.update_layout(title=title, width=1000, modebar_add=[ "toggleSpikelines"])
 
     plot_path = Path(root_dir, 'plots', f'{title}.png')
     print(f'Saving plot to {plot_path}...')
@@ -336,6 +336,7 @@ def plot_lr_range(lr_finder, n_skip_beginning=20, n_skip_end=3, silent=False):
                   y=lr_finder.losses[n_skip_beginning:-n_skip_end],
                   labels={'x': 'Learning Rate (log scale)', 'y': 'Loss'},
                   log_x=True, title='Loss vs Learning Rate')
+    fig.update_layout(modebar_add=[ "toggleSpikelines"])
     fig.update_xaxes(exponentformat='power')
     plot_path = Path(root_dir, 'plots', 'lr_range_test.png')
     print(f'Saving plot to {plot_path}...')

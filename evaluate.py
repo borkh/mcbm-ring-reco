@@ -35,7 +35,7 @@ else:
     # locate the most recent model
     model_path = max(list(Path(root_dir, 'models', 'checkpoints').glob('*.model')),
                      key=os.path.getctime)
-    n_plots = 50
+    n_plots = 200
     silent = False
 
 n_worst = 50
@@ -65,7 +65,6 @@ ring_params_hist(y_df, title='Test data histograms', silent=silent)
 print(f'\nEvaluating model on {dg.n} events from test data...')
 eval_t = evaluate(model, dg)[1]
 print(f'Evaluation of {dg.n} took {eval_t}s to run. {eval_t/dg.n}s per event')
-
 
 # _______________________________________________________________________________
 # Selection of worst predictions
