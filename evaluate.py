@@ -13,6 +13,24 @@ from pathlib import Path
 root_dir = Path(__file__).parent
 test_dir = Path(root_dir, 'data', 'test')
 
+"""
+This script evaluates the model on the test data and generates plots of the
+histograms of the test data and the model predictions. The worst predictions
+are also plotted sorted from best of the worst to worst of the worst. The
+plots are saved to the plots directory.
+
+Arguments
+---------
+    model_path : str
+        Path to the model that will be converted to ONNX format. If not
+        specified, the most recent model will be used.
+    n_plots : int
+        Number of plots to be generated. Default is 200.
+    silent : bool
+        If set, plots will not be shown, but saved to the plots directory.
+        Default is False.
+"""
+
 try:
     __IPYTHON__  # type: ignore
 except NameError:
@@ -38,7 +56,7 @@ else:
     n_plots = 200
     silent = False
 
-n_worst = 50
+n_worst = 200
 hist_size = 100000
 test_size = len(list(Path(test_dir, 'y').glob('*.npy')))
 batch_size = test_size // n_worst

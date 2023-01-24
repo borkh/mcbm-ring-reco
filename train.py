@@ -43,10 +43,14 @@ def lr_range_test(start_lr=1e-7, end_lr=5, epochs=5) -> None:
     in the run_config dictionary in sweep_configs.py. 'max_lr' should be set to the minimum value of
     the loss curve, and 'init_lr' should be set to about 1/20 to 1/100 of 'max_lr'.
 
-    Parameters:
-        start_lr (float, optional): The initial learning rate. Default is 1e-7.
-        end_lr (float, optional): The final learning rate. Default is 5.
-        epochs (int, optional): The number of epochs to train the model for. Default is 5.
+    Parameters
+    ----------
+        start_lr: float, optional
+            The initial learning rate. Default is 1e-7.
+        end_lr: float, optional
+            The final learning rate. Default is 5.
+        epochs: int, optional
+            The number of epochs to train the model for. Default is 5.
     """
     n = int(n_training_files * 0.05)
     training_size = n if n < 100000 else 100000
@@ -81,9 +85,11 @@ def train(c=None) -> None:
     the 1cycle policy, and trains the model. The model and training history are
     then saved to 'models/checkpoints/'.
 
-    Parameters:
-        c (dict, optional): A dictionary containing the hyperparameters for the
-            model. The dictionary should include the following keys:
+    Parameters
+    ----------
+        c: dict, optional
+            A dictionary containing the hyperparameters for the model. The
+            dictionary should include the following keys:
                 - 'batch_size': The number of samples per gradient update.
                 - 'epochs': The number of epochs to train the model for.
                 - 'init_lr': The initial learning rate.
@@ -93,7 +99,8 @@ def train(c=None) -> None:
                     convolutional layer.
                 - 'conv_kernel_size': The size of the convolutional kernel.
 
-    Returns:
+    Returns
+    -------
         None
     """
 
@@ -143,6 +150,31 @@ def train(c=None) -> None:
 
 
 if __name__ == "__main__":
+    """
+    This script trains a model using the specified hyperparameters in `models/model.py`
+    and saves the model and training history to the `models/checkpoints/` directory.
+
+    Arguments
+    ---------
+        train_dir: str
+            The directory containing the training data. Default is 'data/train'.
+        val_dir: str
+            The directory containing the validation data. Default is 'data/val'.
+        find_lr_range: bool
+            If set, no training will be performed, but the learning rate range
+            finder will be run to determine the optimal learning rate range.
+            Default is False.
+        silent: bool
+            If set, plots will not be shown, but saved to the plots directory.
+            Default is False.
+
+    Examples
+    --------
+    Run LR range test:
+        python train.py --find_lr_range
+    Run training with data in 'data/train' and 'data/val':
+        python train.py
+    """
     try:
         __IPYTHON__  # type: ignore
     except NameError:

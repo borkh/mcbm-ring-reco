@@ -92,15 +92,26 @@ if __name__ == '__main__':
     conversion, the onnx model will be run and the output will be compared
     with the output of the keras model. The prediction time of both models
     will also be printed.
+
+    Arguments
+    ---------
+        model_path : str
+            Path to the model that will be converted to onnx format. (e.g.
+            models/checkpoints/4M-202212072326.model). If not specified, the
+            most recent model in the models/checkpoints directory will be used.
+        test_dir : str
+            Path to the test data directory. (e.g. data/test). If not
+            specified, the `data/test` directory will be used.
     """
     try:
         __IPYTHON__  # type: ignore
     except NameError:
         parser = argparse.ArgumentParser()
-        parser.add_argument('--model_path', type=str, required=True,
+        parser.add_argument('--model_path', type=str,
+                            default=max(list(Path(root_dir, 'models', 'checkpoints').glob('*.model')),
+                                    key=os.path.getctime),
                             help='''Path to the model that will be converted to
-                            onnx format. (e.g.
-                            models/checkpoints/4M-202212072326.model)''')
+                            onnx format.''')
         parser.add_argument('--test_dir', type=str,
                             default=Path(root_dir, 'data', 'test'),
                             help='''Path to the test data directory. (e.g.
@@ -109,8 +120,9 @@ if __name__ == '__main__':
         model_path = Path(args.model_path).resolve()
         test_dir = Path(args.test_dir).resolve()
     else:
-        model_path = Path(root_dir, 'models', 'checkpoints',
-                          '0M-202301201524.model')
+        # load the latest model
+        model_path = max(list(Path(root_dir, 'models', 'checkpoints').glob('*.model')),
+                                    key=os.path.getctime)
         test_dir = Path(root_dir, 'data', 'test')
 
     keras_output, onnx_output = run(model_path, test_dir)

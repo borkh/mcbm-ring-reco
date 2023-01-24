@@ -338,16 +338,17 @@ def add_to_dataset(target_dir: Union[str, Path] = 'test', n: int = 100, append: 
     numpy arrays (.npy), respectively. These files are saved in the specified
     directory.
 
-    Parameters:
-        target_dir (str): The directory to save the dataset to.
-        n (int): The size of the dataset to create, i.e., the number of event
+    Parameters
+    ----------
+        target_dir: str or Path
+            The directory to save the dataset to.
+        n: int
+            The size of the dataset to create, i.e., the number of event
             display images and labels.
-        append (bool): If True, append the generated event displays and labels
-            to an existing dataset. If False, delete the existing dataset and create
-            a new one.
-
-    Returns:
-        None
+        append: bool
+            If True, append the generated event displays and labels to an
+            existing dataset. If False, delete the existing dataset and create a
+            new one.
     """
 
     input_shape = (72, 32, 1)
@@ -384,11 +385,8 @@ def add_to_dataset(target_dir: Union[str, Path] = 'test', n: int = 100, append: 
 
     print(f'Creating images and labels in {target_dir}...')
     for i in tqdm(range_):
-        # create a list of probabilities for the number of rings
-        # +2 to shift the probabilities towards the lower end of the range
-        # for example, if the range is [0, 4], the list will be
-        # [0.1, 0.15, 0.2, 0.25, 0.3]
-        lst = [1, 2, 4, 2, 1]
+        # create a list of distribution probabilities
+        lst = [1, 2, 2, 5, 10]
         # normalize the list to sum to 1
         lst = normalize([lst], norm='l1')[0]
 
@@ -434,21 +432,39 @@ if __name__ == "__main__":
     convolutional neural network to reconstruct the parameters of the ellipses
     from the event display images.
 
-    When run as the main file, it uses argparse to take the target directory and
-    number of files as command line arguments. The script takes three parameters
-    as input:
-
-        target_dir: The directory to save the dataset to. 
-        auto: If set, automatically create all three datasets, i.e., train, test,
+    Arguments
+    ---------
+        target_dir: str
+            The directory to save the dataset to. 
+        auto: 
+            If set, automatically create all three datasets, i.e., train, test,
             and validation. The ratio of the number of files in each dataset is
             8:1:1.
-        n_files: The size of the dataset to create, i.e., the number of event
+        n_files: int
+            The size of the dataset to create, i.e., the number of event
             display images and labels.
-        append: If set, append the generated event displays and labels to an
+        append: 
+            If set, append the generated event displays and labels to an
             existing dataset. If not set, delete the existing dataset and create a new
             one. Permission will be asked before deleting the existing dataset.
-    For example:
-        `python data/create_dataset.py --target_dir=data/train --n_files=1000 --append`
+        force:
+            If set, delete the existing dataset and create a new one without
+            asking for permission.
+
+    Examples
+    --------
+    Create a dataset of 1000 files in the directory `data/train`:
+        python create_dataset.py --target_dir data/train --n_files 1000
+
+    Create a dataset of 1000 files in the directory `data/train`, and append it
+    to the existing dataset:
+        python create_dataset.py --target_dir data/train --n_files 1000 --append
+
+    Create all three datasets, i.e., train, test, and validation, with 8000
+    files in the train dataset, 1000 files in the test dataset, and 1000 files
+    in the validation dataset, and don't ask for permission before deleting the
+    existing datasets::
+        python create_dataset.py --auto --n_files=8000 --force
     """
     try:
         __IPYTHON__  # type: ignore
