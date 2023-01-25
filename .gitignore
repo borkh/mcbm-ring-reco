@@ -1,6 +1,10 @@
 wandb/
 venv/
 
+.vscode/
+tmp.h5
+sandbox.py
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
