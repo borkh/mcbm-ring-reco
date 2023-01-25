@@ -318,7 +318,7 @@ def delete_files_by_extension(directory, extension):
         file.unlink()
 
 
-def add_to_dataset(target_dir: Union[str, Path] = 'test', n: int = 100, append: bool = True) -> None:
+def add_to_dataset(target_dir: Path, n: int, append: bool = True) -> None:
     """
     Adds event display images and corresponding labels to a dataset.
 
@@ -340,7 +340,7 @@ def add_to_dataset(target_dir: Union[str, Path] = 'test', n: int = 100, append: 
 
     Parameters
     ----------
-        target_dir: str or Path
+        target_dir: Path
             The directory to save the dataset to.
         n: int
             The size of the dataset to create, i.e., the number of event
@@ -356,12 +356,12 @@ def add_to_dataset(target_dir: Union[str, Path] = 'test', n: int = 100, append: 
     minrings, maxrings = 0, 4
     min_noise_hits, max_noise_hits = 0, 7
 
-    target_dir_X = Path(target_dir, 'X')
-    target_dir_y = Path(target_dir, 'y')
+    target_dir_X = target_dir / 'X'
+    target_dir_y = target_dir / 'y'
 
     range_ = range(0)
     if append:
-        current_size = len(os.listdir(Path(target_dir, 'X')))
+        current_size = len(os.listdir(target_dir / 'X'))
         range_ = range(current_size - 1, current_size - 1 + n)
 
     else:
@@ -396,14 +396,14 @@ def add_to_dataset(target_dir: Union[str, Path] = 'test', n: int = 100, append: 
                        choice(range(min_noise_hits, max_noise_hits)))
         y = np.array(x.params)
 
-        im_path = Path(target_dir_X, f'{i}.png')
-        label_path = Path(target_dir_y, f'{i}.npy')
+        im_path = target_dir_X / f'{i}.png'
+        label_path = target_dir_y / f'{i}.npy'
         cv2.imwrite(str(im_path), 255*x)
         np.save(str(label_path), y)
     print(f"Done. Created {n} images inside directory '{target_dir}'.")
 
 
-def make_dirs(target_dir: Union[str, Path]) -> None:
+def make_dirs(target_dir: Path) -> None:
     '''
     Creates the subdirectories X and y inside the specified directory, and
     creates a .gitignore file in each subdirectory.
@@ -411,12 +411,12 @@ def make_dirs(target_dir: Union[str, Path]) -> None:
     Parameters:
         target_dir (str): The directory to create the subdirectories in.
     '''
-    target_dir_X = Path(target_dir, 'X')
-    target_dir_y = Path(target_dir, 'y')
+    target_dir_X = target_dir / 'X'
+    target_dir_y = target_dir / 'y'
 
     ignore_rule = "*\n!.gitignore"
     for dir in [target_dir_X, target_dir_y]:
-        gitignore_path = Path(dir, '.gitignore')
+        gitignore_path = dir / '.gitignore'
         path = Path(gitignore_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
@@ -501,11 +501,13 @@ if __name__ == "__main__":
         silent = args.silent
     else:
         auto = True
-        target_dir = Path(root_dir, 'data', 'train') if not auto else None
+        target_dir = root_dir / 'data' / 'train' if not auto else None
         n_files = 10000
         append = False
         force = False
         silent = False
+    
+    plot_dir = root_dir / 'plots'
 
     if target_dir is not None:
         make_dirs(target_dir)
@@ -517,24 +519,26 @@ if __name__ == "__main__":
         X, y = datagen[0]
 
         # display_images(X)
-        fit_rings(X, y, title=f'Sample images', silent=silent)
+        fit_rings(X, y, plot_dir,
+                  title=f'Sample images', silent=silent)
 
         y = np.array([datagen[i][1] for i in range(10)])
         ring_params_hist(y, title='Histograms of created data', silent=silent)
     elif auto:
         for dataset, n in zip(['train', 'val', 'test'], [n_files, n_files//8, n_files//8]):
-            target_dir = Path(root_dir, 'data', dataset)
+            target_dir = root_dir / 'data' / dataset
             make_dirs(target_dir)
             add_to_dataset(target_dir=target_dir, n=n, append=append)
 
         # load sample images and labels to verify correctness of the dataset
         # only load the train dataset
-        target_dir = Path(root_dir, 'data', 'train')
+        target_dir = root_dir / 'data' / 'train'
         datagen = DataGen(target_dir, batch_size=200)
         X, y = datagen[0]
 
         # display_images(X)
-        fit_rings(X, y, title=f'Sample images', silent=silent)
+        fit_rings(X, y, plot_dir,
+                  title=f'Sample images', silent=silent)
 
         y = np.array([datagen[i][1] for i in range(10)])
-        ring_params_hist(y, title='Histograms of created data', silent=silent)
+        ring_params_hist(y, plot_dir, title='Histograms of created data', silent=silent)

@@ -46,7 +46,7 @@ except NameError:
                         help='''If set, plots will not be shown, but saved to
                         the plots directory.''')
     args = parser.parse_args()
-    model_path = str(Path(args.model_path).resolve())
+    model_path = Path(args.model_path).resolve()
     n_plots = args.n_plots
     silent = args.silent
 else:
@@ -57,9 +57,10 @@ else:
     silent = False
 
 n_worst = 200
-hist_size = 100000
+hist_size = 10000
 test_size = len(list(Path(test_dir, 'y').glob('*.npy')))
 batch_size = test_size // n_worst
+plot_dir = root_dir / 'plots' / model_path.stem
 
 
 print(f'Loading model {model_path}...')
@@ -73,7 +74,7 @@ dg = DataGen(test_dir, batch_size=batch_size)
 
 print(f'\nPlotting test data histograms of size {hist_size}...')
 y_df = np.array([dg[j][1] for j in range(hist_size//batch_size)])
-ring_params_hist(y_df, title='Test data histograms', silent=silent)
+ring_params_hist(y_df, plot_dir, title='Test data histograms', silent=silent)
 
 
 # _______________________________________________________________________________
@@ -112,7 +113,7 @@ y_worst_pred = model.predict(X_worst)  # type: ignore
 diff = np.sum(np.abs(y_worst - y_worst_pred), axis=(1, 2))
 worst_ids = np.argsort(diff)[-n_worst:]
 
-fit_rings(X_worst[worst_ids], y_worst_pred[worst_ids],
+fit_rings(X_worst[worst_ids], y_worst_pred[worst_ids], plot_dir,
           title='Worst predictions', silent=silent)
 
 # _______________________________________________________________________________
@@ -125,8 +126,10 @@ print(f'\nPredicting on simulation data...')
 y_pred_sim, pred_t = predict(model, sim)
 
 print(f'\nPlotting predictions on simulation data...')
-fit_rings(sim, y_pred_sim, title='Simulation data inference', silent=silent)
-ring_params_hist(y_pred_sim, title='Simulation data inference', silent=silent)
+fit_rings(sim, y_pred_sim, plot_dir,
+          title='Simulation data inference', silent=silent)
+ring_params_hist(y_pred_sim, plot_dir,
+                 title='Simulation data inference', silent=silent)
 
-# # ring_params_hist(idealhough, title='Ideal HT', silent=silent)
-# # ring_params_hist(hough, title='HT', silent=silent)
+# ring_params_hist(idealhough, plot_dir, title='Ideal HT', silent=silent)
+# ring_params_hist(hough, plot_dir, title='HT', silent=silent)

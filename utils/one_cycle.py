@@ -62,18 +62,28 @@ class OneCycleSchedule(tf.keras.callbacks.Callback):
     the model is able to fine-tune its weights and improve its generalization
     performance.
 
-    Args:
-        lr_min (float): The minimum learning rate.
-        lr_max (float): The maximum learning rate.
-        steps (int): The number of steps over which to interpolate the learning
+    Arguments
+    ---------
+        lr_min: float
+            The minimum learning rate.
+        lr_max: float
+            The maximum learning rate.
+        steps: int
+            The number of steps over which to interpolate the learning
             rate and momentum.
-        mom_min (float, optional): The minimum momentum (defaults to 0.85).
-        mom_max (float, optional): The maximum momentum (defaults to 0.95).
-        phase0perc (float, optional): The percentage of steps in the first phase
+        mom_min: float, optional
+            The minimum momentum (defaults to 0.85).
+        mom_max: float, optional
+            The maximum momentum (defaults to 0.95).
+        phase0perc: float, optional
+            The percentage of steps in the first phase
             of the schedule (defaults to 0.3).
+        silent: bool, optional
+            If True, only saves the plot of the learning rate and momentum
+            schedule to disk without displaying it (defaults to False).
     """
 
-    def __init__(self, lr_min, lr_max, steps, mom_min=.85, mom_max=.95, phase0perc=0.3):
+    def __init__(self, lr_min, lr_max, steps, mom_min=.85, mom_max=.95, phase0perc=0.3, plot_dir=root_dir / 'plots', silent=False):
         super(OneCycleSchedule, self).__init__()
         lr_final = lr_max / 10000
         phase0steps = int(steps * phase0perc)
@@ -89,6 +99,9 @@ class OneCycleSchedule(tf.keras.callbacks.Callback):
         # Save the learning rate and momentum values for plotting
         self.lrs = []
         self.moms = []
+
+        self.silent = silent
+        self.plot_dir = plot_dir
 
     def on_train_begin(self, logs=None):
         """
@@ -144,8 +157,7 @@ class OneCycleSchedule(tf.keras.callbacks.Callback):
                 fig.update_yaxes(title_text=subplot_ytitles[i], row=1, col=i+1)
         fig.update_layout(title_text='Learning rate and momentum schedule',
                           modebar_add=["toggleSpikelines"])
-        fig.show()
 
         # save the plot
-        plot_path = str(Path(root_dir, 'plots', 'one_cycle.png'))
-        pio.write_image(fig, plot_path)
+        plot_path = str(self.plot_dir / 'one_cycle.html')
+        pio.write_html(fig, plot_path, auto_open=not self.silent)

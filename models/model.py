@@ -18,12 +18,12 @@ run_config = dict(
                     init_lr=dict(value=1e-4),
 
                     # epochs
-                    epochs=dict(value=5),
-                    batch_size=dict(value=500),
+                    epochs=dict(value=3),
+                    batch_size=dict(value=200),
 
                     # conv2D parameters
                     conv_layers=dict(value=5),
-                    nof_initial_filters=dict(value=32),
+                    nof_initial_filters=dict(value=16),
                     conv_kernel_size=dict(value=3),
                     )
 )

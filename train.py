@@ -71,7 +71,7 @@ def lr_range_test(start_lr=1e-7, end_lr=5, epochs=5) -> None:
         lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
                        batch_size=c.batch_size, epochs=epochs)
 
-        plot_lr_range(lr_finder, silent=silent)
+        plot_lr_range(lr_finder, plot_dir, silent=silent)
 
 
 def train(c=None) -> None:
@@ -103,11 +103,8 @@ def train(c=None) -> None:
     -------
         None
     """
-
-    name = f'{n_training_files//1000000}M'
-    now = datetime.datetime.now().strftime('%Y%m%d%H%M')
     model_path = Path(root_dir, 'models', 'checkpoints',
-                      f'{name}-{now}.model')
+                      f'{name}.model')
 
     with wandb.init(config=None):  # type: ignore
         c = wandb.config
@@ -121,7 +118,8 @@ def train(c=None) -> None:
             spe = train_gen.n // c.batch_size
             steps = spe * c.epochs
 
-            lr_schedule = OneCycleSchedule(c.init_lr, c.max_lr, steps)
+            lr_schedule = OneCycleSchedule(
+                c.init_lr, c.max_lr, steps, plot_dir=plot_dir, silent=silent)
 
             model = build_model(input_shape_, c)
 
@@ -143,7 +141,7 @@ def train(c=None) -> None:
             X, _ = val_gen[0]
             predictions, _ = predict(model, X)
             fit_rings(
-                X, predictions, title='Model Predictions on Validation Data', silent=silent)
+                X, predictions, plot_dir, title='Model Predictions on Validation Data', silent=silent)
 
         except Exception:
             print(traceback.format_exc())
@@ -203,7 +201,13 @@ if __name__ == "__main__":
         find_lr_range = False
         silent = False
 
+    # calculate the number of training files
     n_training_files = len(list(Path(train_dir, 'X').glob('*.png')))
+
+    # create name for model
+    name = f'{n_training_files//1000000}M'
+    now = datetime.datetime.now().strftime('%Y%m%d%H%M')
+    name = f'{name}-{now}'
 
     # load sample png form 'data/train/X' to get input shape
     sample_img_path = Path(train_dir, 'X', '0.png')
@@ -214,5 +218,8 @@ if __name__ == "__main__":
         sweep_id = wandb.sweep(run_config)
         wandb.agent(sweep_id, lr_range_test, count=1)
     else:
+        plot_dir = Path(root_dir, 'plots', name)
+        plot_dir.mkdir()
+
         sweep_id = wandb.sweep(run_config, project='ring-finder')
         wandb.agent(sweep_id, train, count=1)

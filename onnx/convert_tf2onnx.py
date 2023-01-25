@@ -48,7 +48,7 @@ def run(model_path, test_dir=Path(root_dir, 'data', 'test')):
     keras_model = tf.keras.models.load_model(model_path,
                                              custom_objects={'custom_loss': custom_loss})
 
-    test_gen = DataGen(test_dir, batch_size=5000)
+    test_gen = DataGen(test_dir, batch_size=1000)
 
     try:
         subprocess.run(['root', '-q'], stdout=subprocess.PIPE,
@@ -109,7 +109,7 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser()
         parser.add_argument('--model_path', type=str,
                             default=max(list(Path(root_dir, 'models', 'checkpoints').glob('*.model')),
-                                    key=os.path.getctime),
+                                        key=os.path.getctime),
                             help='''Path to the model that will be converted to
                             onnx format.''')
         parser.add_argument('--test_dir', type=str,
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     else:
         # load the latest model
         model_path = max(list(Path(root_dir, 'models', 'checkpoints').glob('*.model')),
-                                    key=os.path.getctime)
+                         key=os.path.getctime)
         test_dir = Path(root_dir, 'data', 'test')
 
     keras_output, onnx_output = run(model_path, test_dir)

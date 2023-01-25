@@ -82,7 +82,7 @@ def plot_single_event(image: np.ndarray, Y1=None, Y2=None, Y3=None,
     return image
 
 
-def display_images(imgs: np.ndarray, col_width: int = 5, title="", silent=False) -> None:
+def display_images(imgs: np.ndarray, plot_dir=None, col_width: int = 5, title="", silent=False) -> None:
     """
     Display a set of images in a grid.
 
@@ -101,16 +101,18 @@ def display_images(imgs: np.ndarray, col_width: int = 5, title="", silent=False)
         imgs = imgs[:len(imgs) // col_width * col_width]
         imgs = imgs.reshape(
             imgs.shape[0] // col_width, col_width, *imgs.shape[1:])
-        fig = px.imshow(imgs, animation_frame=0, facet_col=1, binary_string=True,
-                        height=700, title=title)
-        if not silent:
+        fig = px.imshow(imgs, animation_frame=0, facet_col=1, title=title)
+        if plot_dir is not None:
+            plot_path = plot_dir / f'{title}.html'
+            pio.write_html(fig, plot_path, auto_open=not silent)
+        elif not silent:
             fig.show()
     except ValueError as e:
         print(f'\nError: {e}')
         print(f'The number of images must be at least {col_width}.')
 
 
-def fit_rings(images, params, title="", silent=False) -> None:
+def fit_rings(images, params, plot_dir=None, title="", silent=False) -> None:
     """
     Uses the `plot_single_event` function to fit rings to a set of images
     with the given parameters. The resulting images are then displayed in a
@@ -134,7 +136,7 @@ def fit_rings(images, params, title="", silent=False) -> None:
         images = np.repeat(images, 3, axis=-1)
     ring_fits = np.array([plot_single_event(x, y)
                           for x, y in zip(images, params)])
-    display_images(ring_fits, title=title, silent=silent)
+    display_images(ring_fits, plot_dir, title=title, silent=silent)
 
 
 # functions for reading .csv file from simulation data
@@ -238,13 +240,12 @@ def load_sim_data():
     hough : numpy array
         The Hough transform parameters for each image.
     """
-    idealhough_path = str(Path(root_dir, 'data', 'sim_data',
-                               'targets_ring_hough_ideal.csv'))
+    idealhough_path = str(root_dir / 'data' / 'sim_data' /
+                          'targets_ring_hough_ideal.csv')
     idealhough = loadParameters(idealhough_path)
-    hough_path = str(
-        Path(root_dir, 'data', 'sim_data', 'targets_ring_hough.csv'))
+    hough_path = str(root_dir / 'data' / 'sim_data' / 'targets_ring_hough.csv')
     hough = loadParameters(hough_path)
-    sim_path = str(Path(root_dir, 'data', 'sim_data', 'features_denoise.csv'))
+    sim_path = str(root_dir / 'data' / 'sim_data' / 'features_denoise.csv')
     sim = np.array(loadFeatures(sim_path))
 
     # apply some cuts on both idealhough and hough
@@ -259,7 +260,7 @@ def load_sim_data():
     return sim, idealhough, hough
 
 
-def ring_params_hist(y, title='Ring Parameters Histograms', silent=False):
+def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silent=False):
     """
     This function creates a pd.DataFrame from the ring parameters and plots
     histograms of each parameter. These might be useful for visualizing the
@@ -309,16 +310,18 @@ def ring_params_hist(y, title='Ring Parameters Histograms', silent=False):
 
     fig.add_trace(go.Histogram(x=df['n_rings']), row=5, col=1)
 
-    fig.update_layout(title=title, width=1000, modebar_add=[ "toggleSpikelines"])
+    fig.update_layout(title=title, width=1000,
+                      modebar_add=["toggleSpikelines"])
 
-    plot_path = Path(root_dir, 'plots', f'{title}.png')
-    print(f'Saving plot to {plot_path}...')
-    pio.write_image(fig, plot_path)
-    if not silent:
+    if plot_dir is not None:
+        plot_path = plot_dir / f'{title}.html'
+        print(f'Saving plot to {plot_path}...')
+        pio.write_html(fig, plot_path, auto_open=not silent)
+    elif not silent:
         fig.show()
 
 
-def plot_lr_range(lr_finder, n_skip_beginning=20, n_skip_end=3, silent=False):
+def plot_lr_range(lr_finder, plot_dir, n_skip_beginning=20, n_skip_end=3, silent=False):
     """
     This function plots the loss vs learning rate for the learning rate range
     test.
@@ -336,13 +339,11 @@ def plot_lr_range(lr_finder, n_skip_beginning=20, n_skip_end=3, silent=False):
                   y=lr_finder.losses[n_skip_beginning:-n_skip_end],
                   labels={'x': 'Learning Rate (log scale)', 'y': 'Loss'},
                   log_x=True, title='Loss vs Learning Rate')
-    fig.update_layout(modebar_add=[ "toggleSpikelines"])
+    fig.update_layout(modebar_add=["toggleSpikelines"])
     fig.update_xaxes(exponentformat='power')
-    plot_path = Path(root_dir, 'plots', 'lr_range_test.png')
+    plot_path = plot_dir / 'lr_range.html'
     print(f'Saving plot to {plot_path}...')
-    pio.write_image(fig, plot_path)
-    if not silent:
-        fig.show()
+    pio.write_html(fig, plot_path, auto_open=not silent)
 
 
 def hits_on_ring(y_true, y_pred):
