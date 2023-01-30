@@ -16,8 +16,10 @@ import argparse
 import cv2
 import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # nopep8
+
 from keras_lr_finder import LRFinder
 from tensorflow.keras.optimizers import SGD  # type: ignore
+from tensorflow.keras.callbacks import CSVLogger  # type: ignore
 from wandb.keras import WandbCallback
 
 import wandb
@@ -71,6 +73,7 @@ def lr_range_test(start_lr=1e-7, end_lr=5, epochs=5) -> None:
         lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
                        batch_size=c.batch_size, epochs=epochs)
 
+        plot_dir = root_dir / 'plots'
         plot_lr_range(lr_finder, plot_dir, silent=silent)
 
 
@@ -110,6 +113,8 @@ def train(c=None) -> None:
         c = wandb.config
 
         try:
+            csv_path = plot_dir / 'loss.csv'
+            csv_logger = CSVLogger(csv_path, append=True, separator=',')
             # define data generators for training and validation
             train_gen = DataGen(train_dir, batch_size=c.batch_size)
             val_gen = DataGen(val_dir, batch_size=32)
@@ -132,11 +137,12 @@ def train(c=None) -> None:
                       steps_per_epoch=spe,
                       epochs=c.epochs,
                       shuffle=True,
-                      callbacks=[WandbCallback(), lr_schedule])
+                      callbacks=[WandbCallback(), lr_schedule, csv_logger])
 
             model.save(model_path)
 
             lr_schedule.plot()
+            plot_loss(plot_dir, silent=silent)
 
             X, _ = val_gen[0]
             predictions, _ = predict(model, X)

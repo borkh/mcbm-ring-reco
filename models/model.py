@@ -15,15 +15,15 @@ run_config = dict(
     parameters=dict(loss=dict(value="mse"),
                     # learning rate
                     max_lr=dict(value=0.05),
-                    init_lr=dict(value=1e-4),
+                    init_lr=dict(value=1e-3),
 
                     # epochs
-                    epochs=dict(value=3),
+                    epochs=dict(value=8),
                     batch_size=dict(value=200),
 
                     # conv2D parameters
                     conv_layers=dict(value=5),
-                    nof_initial_filters=dict(value=16),
+                    nof_initial_filters=dict(value=32),
                     conv_kernel_size=dict(value=3),
                     )
 )

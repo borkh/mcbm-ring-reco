@@ -29,24 +29,37 @@ class DataGen(tf.keras.utils.Sequence):
     used for training and evaluation of a model using the fit method
     in tf.keras.Model.
 
-    Attributes:
-        target_dir (str): The directory containing the images and labels.
-        batch_size (int): The batch size.
-        n (int): The total number of images in the directory.
+    Attributes
+    ----------
+        target_dir: str
+            The directory containing the images and labels.
+        batch_size: int
+            The batch size.
+        n:
+            The number of samples the data generator should return. If None,
+            all samples in the target directory will be returned.
 
     Methods:
-        init(self, target_dir, batch_size=32): Initializes the data generator
-            with the target directory and batch size.
-        getitem(self, index): Retrieves a batch of images and labels at the
-            given index.
-        len(self): Returns the number of batches in the data generator.
+        init(self, target_dir, batch_size=32, n=None):
+            Initializes the data generator with the target directory and batch size.
+        __iter__(self):
+            Returns the iterator object.
+        __next__(self):
+            Returns the next batch of data.
+        __getitem__(self, index):
+            Returns the batch of data at the specified index.
+        __len__(self):
+            Returns the number of batches in the data generator.
     """
 
-    def __init__(self, target_dir, batch_size=32):
+    def __init__(self, target_dir, batch_size=32, n=None): 
         self.target_dir = tf.compat.as_str_any(target_dir)
         self.batch_size = batch_size
-        self.n = len(list(Path(self.target_dir, 'X').glob('*.png')))
         self.current_index = 0
+        if n is None:
+            self.n = len(list(Path(self.target_dir, 'X').glob('*.png')))
+        else:
+            self.n = n
 
     def __iter__(self):
         return self  # return the iterator object

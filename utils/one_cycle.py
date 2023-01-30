@@ -4,8 +4,12 @@ import plotly.express as px
 import plotly.io as pio
 from plotly.subplots import make_subplots
 from pathlib import Path
+import sys
 
 root_dir = Path(__file__).parent.parent
+sys.path.append(str(root_dir))
+
+from utils.utils import fig_height, fig_width, margins  # nopep8
 
 
 class CosineAnnealer:
@@ -155,9 +159,10 @@ class OneCycleSchedule(tf.keras.callbacks.Callback):
                 fig.add_trace(figure['data'][trace],  row=1, col=i+1)
                 fig.update_xaxes(title_text='steps', row=1, col=i+1)
                 fig.update_yaxes(title_text=subplot_ytitles[i], row=1, col=i+1)
-        fig.update_layout(title_text='Learning rate and momentum schedule',
-                          modebar_add=["toggleSpikelines"])
+        fig.update_layout(margin=margins, modebar_add=["toggleSpikelines"])
 
         # save the plot
         plot_path = str(self.plot_dir / 'one_cycle.html')
         pio.write_html(fig, plot_path, auto_open=not self.silent)
+        pio.write_image(fig, plot_path.replace('.html', '.png'),
+                        width=fig_width, height=fig_height)

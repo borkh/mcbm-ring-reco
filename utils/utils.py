@@ -2,7 +2,6 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 import time
 import plotly.express as px
 import plotly.graph_objs as go
@@ -15,6 +14,9 @@ np.set_printoptions(threshold=sys.maxsize)
 
 root_dir = Path(__file__).parent.parent
 pio.templates.default = 'presentation'
+fig_width = 700
+fig_height = 250
+margins = dict(l=90, r=5, t=5, b=65)
 
 
 def measure_time(func):
@@ -139,125 +141,73 @@ def fit_rings(images, params, plot_dir=None, title="", silent=False) -> None:
     display_images(ring_fits, plot_dir, title=title, silent=silent)
 
 
-# functions for reading .csv file from simulation data
-def loadFeatures(datafile, pixel_x=32, pixel_y=72):
-    with open(datafile, 'r') as temp_f:
-        col_count = [len(l.split(",")) for l in temp_f.readlines()]
-    column_names = [i for i in range(0, max(col_count))]
-    hits = pd.read_csv(datafile, header=None, index_col=0, comment='#',
-                       delimiter=",", nrows=20000, names=column_names).values.astype('int32')  # type: ignore
-    hits[hits < 0] = 0
-    hits_temp = np.zeros([len(hits[:, 0]), pixel_x*pixel_y])
-    for i in range(len(hits[:, 0])):
-        for j in range(len(hits[0, :])):
-            if hits[i, j] == 0:
-                break
-            hits_temp[i, hits[i, j]-1] += 1
-    hits_temp = tf.reshape(hits_temp, [len(hits[:, 0]), pixel_y, pixel_x])
-    hits_temp = tf.clip_by_value(
-        hits_temp, clip_value_min=0., clip_value_max=1.)
-    hits = tf.cast(hits_temp[..., tf.newaxis],  # type: ignore
-                   dtype=tf.float32)
-    print('Loading data from  ' + str(datafile) + '  -> ' +
-          str(len(hits[:])) + '  events loaded')  # type: ignore
-    return hits
-
-
-def loadParameters(datafile):
-    with open(datafile, 'r') as f:
-        lines = f.readlines()
-        n = len(lines)
-    params = np.zeros((n, 25))
-    for i, line in enumerate(lines):
-        line = line.strip().split(",")
-        line.remove("")
-        line = np.array([float(x) for x in line])
-        for j, par in enumerate(line):
-            try:
-                params[i, j] = np.round(par, 2)
-            except IndexError as e:
-                print(e)
-    return params
-
-
-def filter_events(y: np.ndarray) -> np.ndarray:
-    """Filter events based on certain criteria.
-
-    This function filters events in a dataset based on the following criteria:
-    - Removing events with NaN (Not a Number) in any of the parameters
-    - Removing events with all zero values in the parameters
-    - Removing events where the x-coordinate of the first ring is less than 0 or
-      greater than 72
-    - Removing events where the y-coordinate of the first ring is less than 0 or
-      greater than 72
-    - Removing events where the radius of the first ring is greater than 20
-    - Repeating the above steps for the second through fifth rings
-      (x-coordinate, y-coordinate, radius).
+def plot_lr_range(lr_finder, plot_dir, n_skip_beginning=20, n_skip_end=3, silent=False):
+    """
+    This function plots the loss vs learning rate for the learning rate range
+    test.
 
     Parameters
     ----------
-    y : numpy array
-        A 2D array of shape (n_events, n_parameters) containing the parameters
-        for each event. The parameters represent the x-coordinate, y-coordinate,
-        semi-major axis, semi-minor axis, and rotation angle of ellipses.
-
-    Returns
-    -------
-    filtered_events : numpy array
-        A 2D array with the same shape as `y`, but potentially fewer rows,
-        containing the events that meet the filtering criteria.
+    lr_finder : lr_finder.LRFinder
+        The learning rate finder object.
+    n_skip_beginning : int
+        The number of batches to skip at the beginning.
+    n_skip_end : int
+        The number of batches to skip at the end.
     """
-    cond1 = np.all(~np.isnan(y), axis=1)
-    cond2 = np.invert(np.all(y == 0., axis=1))
-
-    filtered_events = np.where(cond1 & cond2)[0]
-
-    for i in range(5):
-        filtered_events = np.intersect1d(filtered_events,
-                                         np.where((y[:, i*5] >= 0.) &
-                                                  (y[:, i*5] <= 72.) &
-                                                  (y[:, i*5 + 1] >= 0.) &
-                                                  (y[:, i*5 + 1] <= 72.) &
-                                                  (y[:, i*5 + 2] <= 20.))[0])
-    print(f'Filtered {len(y) - len(filtered_events)} events out of {len(y)} events.',
-          f'\nRemaining events: {len(filtered_events)}')
-
-    return filtered_events
+    fig = px.line(x=lr_finder.lrs[n_skip_beginning:-n_skip_end],
+                  y=lr_finder.losses[n_skip_beginning:-n_skip_end],
+                  labels={'x': 'Learning Rate (log scale)', 'y': 'Loss'},
+                  log_x=True)
+    fig.update_layout(margin=margins, modebar_add=["toggleSpikelines"])
+    fig.update_xaxes(exponentformat='power')
+    plot_path = plot_dir / 'lr_range.html'
+    print(f'Saving plots to {plot_path} and {plot_dir / "lr_range.png"}')
+    pio.write_html(fig, plot_path, auto_open=not silent)
+    pio.write_image(fig, plot_dir / 'lr_range.png',
+                    width=fig_width, height=fig_height)
 
 
-def load_sim_data():
+def plot_loss(plot_dir: Path, silent: bool = False) -> None:
     """
-    This function loads the simulated data from the data/sim_data directory.
-    Some cuts are applied to the data to remove events that contain bad ring
-    parameters.
+    This function plots the loss vs epoch for the training and validation
+    sets.
 
-    Returns
-    -------
-    sim : numpy array
-        The simulated images.
-    idealhough : numpy array
-        The ideal Hough transform parameters for each image.
-    hough : numpy array
-        The Hough transform parameters for each image.
+    Parameters
+    ----------
+        plot_dir : Path
+            The directory to save the plot to.
+        silent : bool, optional
+            If True, the plot will be saved but not displayed.
     """
-    idealhough_path = str(root_dir / 'data' / 'sim_data' /
-                          'targets_ring_hough_ideal.csv')
-    idealhough = loadParameters(idealhough_path)
-    hough_path = str(root_dir / 'data' / 'sim_data' / 'targets_ring_hough.csv')
-    hough = loadParameters(hough_path)
-    sim_path = str(root_dir / 'data' / 'sim_data' / 'features_denoise.csv')
-    sim = np.array(loadFeatures(sim_path))
+    df = pd.read_csv(plot_dir / 'loss.csv')
+    fig = go.Figure()
+    trace1 = go.Scatter(x=df['epoch'], y=df['loss'], name='loss', mode='lines')
+    # add legend entry with best loss
+    best_loss = df['loss'].min()
+    trace1.name += f' (best: {best_loss:.3f})'  # type: ignore
+    trace2 = go.Scatter(x=df['epoch'], y=df['val_loss'],
+                        name=f'val_loss', mode='lines')
+    # add legend entry with best val_loss
+    best_val_loss = df['val_loss'].min()
+    trace2.name += f' (best: {best_val_loss:.3f})'  # type: ignore
+    # move legend inside plot
+    fig.update_layout(legend=dict(x=0.6, y=1))
 
-    # apply some cuts on both idealhough and hough
-    indices = filter_events(idealhough)
-    indices = filter_events(hough[indices])
+    fig.add_trace(trace1)
+    fig.add_trace(trace2)
+    fig.update_layout(showlegend=True, xaxis_title='Epoch', yaxis_title='Loss')
 
-    sim, idealhough, hough = sim[indices], idealhough[indices], hough[indices]
+    fig.update_layout(margin=margins,
+                      modebar_add=["toggleSpikelines"])
 
-    idealhough = idealhough.reshape(idealhough.shape[0], 5, 5)
-    hough = hough.reshape(hough.shape[0], 5, 5)
+    # save the plot
+    plot_path = str(plot_dir / 'loss.html')
+    print(f'Saving plots to {plot_path} and {plot_dir / "loss.png"}')
+    pio.write_html(fig, plot_path, auto_open=not silent)
+    pio.write_image(fig, plot_path.replace('.html', '.png'),
+                    width=fig_width, height=fig_height)
 
-    return sim, idealhough, hough
 
 
 def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silent=False):
@@ -321,29 +271,55 @@ def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silen
         fig.show()
 
 
-def plot_lr_range(lr_finder, plot_dir, n_skip_beginning=20, n_skip_end=3, silent=False):
+def load_sim_data() -> tuple[np.ndarray, pd.DataFrame]:
     """
-    This function plots the loss vs learning rate for the learning rate range
-    test.
+    Load simulation data from a file.
+
+    This function filters events in a dataset based on the following criteria:
+    - Removing events with NaN (Not a Number) in any of the parameters
+    - Removing events with all zero values in the parameters
+    - Removing events where the x-coordinate of the first ring is less than 0 or
+      greater than 72
+    - Removing events where the y-coordinate of the first ring is less than 0 or
+      greater than 72
+    - Removing events where the radius of the first ring is greater than 20
+    - Repeating the above steps for the second through fifth rings
+      (x-coordinate, y-coordinate, radius).
 
     Parameters
     ----------
-    lr_finder : lr_finder.LRFinder
-        The learning rate finder object.
-    n_skip_beginning : int
-        The number of batches to skip at the beginning.
-    n_skip_end : int
-        The number of batches to skip at the end.
+    y : numpy array
+        A 2D array of shape (n_events, n_parameters) containing the parameters
+        for each event. The parameters represent the x-coordinate, y-coordinate,
+        semi-major axis, semi-minor axis, and rotation angle of ellipses.
+
+    Returns
+    -------
+
     """
-    fig = px.line(x=lr_finder.lrs[n_skip_beginning:-n_skip_end],
-                  y=lr_finder.losses[n_skip_beginning:-n_skip_end],
-                  labels={'x': 'Learning Rate (log scale)', 'y': 'Loss'},
-                  log_x=True, title='Loss vs Learning Rate')
-    fig.update_layout(modebar_add=["toggleSpikelines"])
-    fig.update_xaxes(exponentformat='power')
-    plot_path = plot_dir / 'lr_range.html'
-    print(f'Saving plot to {plot_path}...')
-    pio.write_html(fig, plot_path, auto_open=not silent)
+    img_dir = root_dir / 'data' / 'sim_data'
+    df = pd.read_csv(root_dir / 'data' / 'sim_data' / 'ring_hough_idealhough.csv')
+    # remove nan and inf values
+    df = df.replace([np.inf, -np.inf], np.nan)
+    df = df.dropna()
+
+    for i in range(10):
+        df = df.iloc[np.where((df.iloc[:, i*5] >= 0.) &
+                            (df.iloc[:, i*5] <= 72.) &
+                            (df.iloc[:, i*5 + 1] >= 0.) &
+                            (df.iloc[:, i*5 + 1] <= 72.) &
+                            (df.iloc[:, i*5 + 2] <= 10.))[0]]
+
+    # remove rows where all values are 0
+    df = df.iloc[np.where((df.iloc[:, 0:25] != 0.).any(axis=1))[0]]
+    df = df.iloc[np.where((df.iloc[:, 25:50] != 0.).any(axis=1))[0]]
+
+    sim = np.array([cv2.imread(str(img_dir / i)) /
+                    255. for i in df['image_location']])
+    # return as 1-channel images
+    sim = sim[..., :1]
+
+    return sim, df
 
 
 def hits_on_ring(y_true, y_pred):

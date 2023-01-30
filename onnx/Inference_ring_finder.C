@@ -11,12 +11,12 @@ using namespace std;
 int number_of_png_files_in_dir(string dir_name) {
     DIR *dir;
     struct dirent *ent;
-    int number_of_files = 0;
+    int n_files = 0;
     if ((dir = opendir (dir_name.c_str())) != NULL) {
         while ((ent = readdir (dir)) != NULL) {
             string file_name = ent->d_name;
             if (file_name.find(".png") != string::npos) {
-                number_of_files++;
+                n_files++;
             }
         }
         closedir (dir);
@@ -24,7 +24,7 @@ int number_of_png_files_in_dir(string dir_name) {
         perror ("");
         return EXIT_FAILURE;
     }
-    return number_of_files;
+    return n_files;
 }
 
 void Inference_ring_finder() {
@@ -36,36 +36,37 @@ void Inference_ring_finder() {
     const char* output_names[] = {"reshape"};
 
     string dir_name = "../data/test/X/";
-    int number_of_files = number_of_png_files_in_dir(dir_name);
+    int n_files = number_of_png_files_in_dir(dir_name);
+    int bs = 1000, w = 32, h = 72, c = 1;
+    int n_rings = 5, n_params = 5;
 
+    int n_batches = n_files / bs;
 
-    for (int i = 0; i < number_of_files; i++) {
-        array<float, 72*32> input_image{};
+    int input_size = bs * w * h * c;
 
-        int width = 32, height = 72, channels = 1;
-        string filename = dir_name + to_string(i) + ".png";
+    for (int i = 0; i < n_batches; i++) {
+        vector<float> input_batch(input_size);
 
-        unsigned char* pixels = stbi_load(filename.c_str(), &width, &height, &channels, 0);
-
-
-        for (int j{}; j < 72*32; j++) {
-            input_image[j] = pixels[j] / 255.0;
+        // load images and write them to input_batch
+        for (int j{}; j < bs; j++) {
+            string filename = dir_name + to_string(i * bs + j) + ".png";
+            unsigned char* pixels = stbi_load(filename.c_str(), &w, &h, &c, 0);
+            for (int k{}; k < w * h * c; k++) {
+                input_batch[j * w * h * c + k] = pixels[k] / 255.0;
+            }
         }
 
-        ifstream file(filename);
-
-        array<int64_t, 4> input_shape{1, 72, 32, 1};
-        array<int64_t, 2> output_shape{5, 5};
+        array<int64_t, 4> input_shape{bs, h, w, c};
+        array<int64_t, 2> output_shape{n_rings, n_params};
 
         auto allocator_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
-        Ort::Value input_tensor = Ort::Value::CreateTensor<float>(allocator_info, input_image.data(), input_image.size(), input_shape.data(), input_shape.size());
+        Ort::Value input_tensor = Ort::Value::CreateTensor<float>(allocator_info, input_batch.data(), input_batch.size(), input_shape.data(), input_shape.size());
 
         auto output_tensor = session.Run(Ort::RunOptions{nullptr}, input_names, &input_tensor, 1, output_names, 1);
         float* intarr = output_tensor.front().GetTensorMutableData<float>();
-        vector<float> output_tensor_values {intarr, intarr + 25};
+        vector<float> output_tensor_values {intarr, intarr + bs * n_rings * n_params};
         for(int i{}; i < output_tensor_values.size(); i++) {
             cout << output_tensor_values[i] << ",";
         }
-        file.close();
     }
 }

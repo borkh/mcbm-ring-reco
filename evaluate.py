@@ -3,12 +3,14 @@ import sys
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 import tensorflow as tf
 import argparse
+import pandas as pd
 from tqdm import tqdm
 
 from utils.utils import *
 from models.model import custom_loss
 from data.create_data import DataGen
 from pathlib import Path
+from sklearn.metrics import mean_squared_error as mse
 
 root_dir = Path(__file__).parent
 test_dir = Path(root_dir, 'data', 'test')
@@ -54,7 +56,7 @@ else:
     model_path = max(list(Path(root_dir, 'models', 'checkpoints').glob('*.model')),
                      key=os.path.getctime)
     n_plots = 200
-    silent = False
+    silent = True
 
 n_worst = 200
 hist_size = 10000
@@ -121,7 +123,10 @@ fit_rings(X_worst[worst_ids], y_worst_pred[worst_ids], plot_dir,
 # _______________________________________________________________________________
 
 print(f'\nLoading simulation data...')
-sim, idealhough, hough = (x[:n_plots] for x in load_sim_data())
+sim, df = (x[:n_plots] for x in load_sim_data())
+hough = df.iloc[:, :25].to_numpy().reshape(-1, 5, 5)  # type: ignore
+idealhough = df.iloc[:, 25:].to_numpy().reshape(-1, 5, 5)  # type: ignore
+
 print(f'\nPredicting on simulation data...')
 y_pred_sim, pred_t = predict(model, sim)
 
@@ -133,3 +138,30 @@ ring_params_hist(y_pred_sim, plot_dir,
 
 # ring_params_hist(idealhough, plot_dir, title='Ideal HT', silent=silent)
 # ring_params_hist(hough, plot_dir, title='HT', silent=silent)
+
+ideal_x_cols = [col for col in df.columns if 'ideal_x' in col]  # type: ignore
+ideal_y_cols = [col for col in df.columns if 'ideal_y' in col]  # type: ignore
+x_cols = [col for col in df.columns if 'x' in col][:5]  # type: ignore
+y_cols = [col for col in df.columns if 'y' in col][:5]  # type: ignore
+ideal_r_cols = [col for col in df.columns if 'ideal_a' in col]  # type: ignore
+r_cols = [col for col in df.columns if 'a' in col][:5]  # type: ignore
+
+
+mse_x = np.sqrt(mse(df[ideal_x_cols], df[x_cols]))  # type: ignore
+mse_y = np.sqrt(mse(df[ideal_y_cols], df[y_cols]))  # type: ignore
+mse_r = np.sqrt(mse(df[ideal_r_cols], df[r_cols]))  # type: ignore
+print(f'MSE iHT-HT: \n\tx: {mse_x}, \n\ty: {mse_y}, \n\tr: {mse_r}')
+
+# locate most recent model in models/checkpoints
+model_dir = root_dir / 'models' / 'checkpoints'
+model_path = max(model_dir.glob('*.model'), key=os.path.getctime)
+print(f'Loading model from {model_path}')
+model = tf.keras.models.load_model(model_path,
+                                   custom_objects={'custom_loss': custom_loss})
+pred = model.predict(sim)  # type: ignore
+
+mse_x = np.sqrt(mse(df[ideal_x_cols], pred[..., 0]))  # type: ignore
+mse_y = np.sqrt(mse(df[ideal_y_cols], pred[..., 1]))  # type: ignore
+mse_r = np.sqrt(mse(df[ideal_r_cols], pred[..., 2]))  # type: ignore
+
+print(f'MSE iHT-CNN: \n\tx: {mse_x}, \n\ty: {mse_y}, \n\tr: {mse_r}')
