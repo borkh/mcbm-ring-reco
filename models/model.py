@@ -18,7 +18,7 @@ run_config = dict(
                     init_lr=dict(value=1e-3),
 
                     # epochs
-                    epochs=dict(value=8),
+                    epochs=dict(value=5),
                     batch_size=dict(value=200),
 
                     # conv2D parameters
