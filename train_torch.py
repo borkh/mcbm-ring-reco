@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchsummary import summary
-from torchvision import transforms
+from torchvision import transforms, models
 from torch.nn.functional import relu
 from torch.nn import (BatchNorm1d, BatchNorm2d, Conv2d, MaxPool2d, Linear,
                       Flatten, ReLU, Sequential)
@@ -86,6 +86,27 @@ class RingRegressor(torch.nn.Module):
         out = self.network(x)
         return out.view(-1, 5, 5)
 
+
+class ReshapedResNet18(torch.nn.Module):
+    def __init__(self, num_classes=5*5):
+        super(ReshapedResNet18, self).__init__()
+        self.resnet = models.resnet18(weights=None)
+        # change the input channel to 1
+        self.resnet.conv1 = torch.nn.Conv2d(
+            1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+
+        for param in self.resnet.parameters():
+            param.requires_grad = False
+
+        self.resnet.fc = torch.nn.Linear(512, 512)
+        self.fc2 = torch.nn.Linear(512, num_classes)
+
+    def forward(self, x):
+        x = self.resnet(x)
+        x = self.fc2(x)
+        x = x.view(-1, 5, 5)
+        return x
+
         # use gpu
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -95,7 +116,9 @@ batch_size = 200
 n_epochs = 3
 
 # define model
-model = RingRegressor().to(device)
+# model = RingRegressor().to(device)
+model = ReshapedResNet18().to(device)
+
 summary(model, (1, 72, 32))
 
 # define dataset and dataloader
@@ -128,4 +151,5 @@ for epoch in range(n_epochs):
         optimizer.zero_grad()
         scheduler.step()
         if batch % 5 == 0:
-            pbar.set_description(f'Epoch {epoch+1}/{n_epochs}: Loss: {loss.item():>8.4f}')
+            pbar.set_description(
+                f'Epoch {epoch+1}/{n_epochs}: Loss: {loss.item():>8.4f}')

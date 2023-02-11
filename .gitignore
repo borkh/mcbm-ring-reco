@@ -1,7 +1,9 @@
 wandb/
 venv/
+lightning_logs/
 
 .vscode/
+.lr_find*
 tmp.h5
 sandbox.py
 
