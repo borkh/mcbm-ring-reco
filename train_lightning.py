@@ -1,8 +1,8 @@
 from utils.utils import *
 from pathlib import Path
 import cv2
+import torchvision
 from torchvision import transforms, models
-from torchsummary import summary
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning import Trainer
@@ -44,9 +44,10 @@ class EventDataset(Dataset):
 class LitResNet18(pl.LightningModule):
     def __init__(self, num_classes=5*5, batch_size=200, train_size=None):
         super(LitResNet18, self).__init__()
-        self.max_lr = 0.1
+        self.learning_rate = 0.1
         self.batch_size = batch_size
         self.train_size = train_size
+        self.loss = torch.nn.MSELoss()
 
         self.resnet = models.resnet18(weights=None)
         # change the input channel to 1
@@ -63,32 +64,54 @@ class LitResNet18(pl.LightningModule):
         x = x.view(-1, 5, 5)
         return x
 
+    def setup(self, stage=None):
+        self.trainset = EventDataset(ROOT_DIR / 'data' / 'train',
+                                     n_samples=self.train_size, transforms=transforms.ToTensor())
+        self.valset = EventDataset(ROOT_DIR / 'data' / 'val',
+                                   n_samples=None,
+                                   transforms=transforms.ToTensor())
+        self.testset = EventDataset(ROOT_DIR / 'data' / 'test',
+                                    n_samples=None,
+                                    transforms=transforms.ToTensor())
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = torch.nn.MSELoss()(y_hat, y)
+        loss = self.loss(y_hat, y)
         self.log('train_loss', loss)
-        return loss
+        return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
-        loss = self.training_step(batch, batch_idx)
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss(y_hat, y)
         self.log('val_loss', loss)
         return {'val_loss': loss}
 
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss(y_hat, y)
+
+        sample_imgs = x[:5]
+
+        grid = torchvision.utils.make_grid(sample_imgs)
+        self.logger.experiment.add_image('images', grid, 0)  # type: ignore
+
+        self.log('test_loss', loss)
+        return {'test_loss': loss}
+
     def train_dataloader(self):
-        trainset = EventDataset(ROOT_DIR / 'data' / 'train',
-                                n_samples=self.train_size, transforms=transforms.ToTensor())
-        trainloader = DataLoader(trainset, batch_size=self.batch_size,
-                                 num_workers=12, shuffle=True)
-        return trainloader
+        return DataLoader(self.trainset, batch_size=self.batch_size,
+                          num_workers=12, shuffle=True)
 
     def val_dataloader(self):
-        val_size = int(self.train_size*0.1) if self.train_size is not None else None
-        valset = EventDataset(ROOT_DIR / 'data' / 'val',
-                              n_samples=val_size, transforms=transforms.ToTensor())  # type: ignore
-        valloader = DataLoader(valset, batch_size=self.batch_size,
-                               num_workers=12, shuffle=False)
-        return valloader
+        return DataLoader(self.valset, batch_size=self.batch_size,
+                          num_workers=12, shuffle=False)
+
+    def test_dataloader(self):
+        return DataLoader(self.valset, batch_size=self.batch_size,
+                          num_workers=12, shuffle=False)
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss']  # type: ignore
@@ -104,19 +127,14 @@ class LitResNet18(pl.LightningModule):
         )
         scheduler = torch.optim.lr_scheduler.OneCycleLR(  # type: ignore
             optimizer,
-            max_lr=self.max_lr,
+            max_lr=self.learning_rate * 25,
             three_phase=True,
             total_steps=self.trainer.estimated_stepping_batches
         )
         return [optimizer], [{'scheduler': scheduler, 'interval': 'step'}]
 
 
-if __name__ == '__main__':
-    # define hyperparameters
-    batch_size = 200
-    n_epochs = 3
-    train_size = None  # 400000
-
+def train():
     # define model
     if train_size is None:
         model = LitResNet18(batch_size=batch_size)
@@ -127,10 +145,24 @@ if __name__ == '__main__':
                       devices=1,
                       max_epochs=n_epochs,
                       auto_lr_find=True,
+                      #   auto_scale_batch_size='binsearch',
                       callbacks=[lr_monitor])
-
-    lr_finder = trainer.tuner.lr_find(model)
-    init_lr = lr_finder.suggestion()  # type: ignore
-    model.max_lr = init_lr * 25  # type: ignore
+    trainer.tune(model)
 
     trainer.fit(model)
+
+
+if __name__ == '__main__':
+    # define hyperparameters
+    batch_size = 200
+    n_epochs = 6
+    train_size = None
+
+    train()
+
+    # # load model
+    # model = LitResNet18.load_from_checkpoint(
+    #     'lightning_logs/version_34/checkpoints/epoch=2-step=255000.ckpt')
+
+    # trainer = Trainer(accelerator='gpu', devices=1, max_epochs=n_epochs)
+    # trainer.test(model)

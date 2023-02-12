@@ -4,6 +4,7 @@ lightning_logs/
 
 .vscode/
 .lr_find*
+.scale_batch*
 tmp.h5
 sandbox.py
 
