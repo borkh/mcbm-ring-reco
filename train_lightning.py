@@ -5,6 +5,7 @@ import torchvision
 from torchvision import transforms, models
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.loggers import WandbLogger  # type: ignore
 from pytorch_lightning import Trainer
 from torch.utils.data import Dataset, DataLoader
 import torch
@@ -42,22 +43,24 @@ class EventDataset(Dataset):
 
 
 class LitResNet18(pl.LightningModule):
-    def __init__(self, num_classes=5*5, batch_size=200, train_size=None):
+    def __init__(self, batch_size, train_size=None):
         super(LitResNet18, self).__init__()
+        # define hyperparameters
+        # learning rate is only set for tracking purposes
+        # it will be overwritten by the scheduler
         self.learning_rate = 0.1
         self.batch_size = batch_size
         self.train_size = train_size
+
+        # define loss
         self.loss = torch.nn.MSELoss()
 
+        # define model
         self.resnet = models.resnet18(weights=None)
         # change the input channel to 1
         self.resnet.conv1 = torch.nn.Conv2d(
             1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-
-        # for param in self.resnet.parameters():
-        #     param.requires_grad = False
-
-        self.resnet.fc = torch.nn.Linear(512, num_classes)
+        self.resnet.fc = torch.nn.Linear(512, 25)
 
     def forward(self, x):
         x = self.resnet(x)
@@ -88,6 +91,11 @@ class LitResNet18(pl.LightningModule):
         self.log('val_loss', loss)
         return {'val_loss': loss}
 
+    # def validation_epoch_end(self, outputs):
+    #     avg_loss = torch.stack([x['val_loss']  # type: ignore
+    #                            for x in outputs]).mean()
+    #     self.log('avg_val_loss', avg_loss)
+
     def test_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
@@ -113,16 +121,11 @@ class LitResNet18(pl.LightningModule):
         return DataLoader(self.valset, batch_size=self.batch_size,
                           num_workers=12, shuffle=False)
 
-    def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x['val_loss']  # type: ignore
-                               for x in outputs]).mean()
-        self.log('avg_val_loss', avg_loss)
-
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(
             self.parameters(),
             nesterov=True,
-            lr=10,
+            lr=self.learning_rate,
             momentum=0.9
         )
         scheduler = torch.optim.lr_scheduler.OneCycleLR(  # type: ignore
@@ -146,23 +149,30 @@ def train():
                       max_epochs=n_epochs,
                       auto_lr_find=True,
                       #   auto_scale_batch_size='binsearch',
-                      callbacks=[lr_monitor])
+                      callbacks=[lr_monitor],
+                      logger=wandb_logger)
     trainer.tune(model)
 
     trainer.fit(model)
+    trainer.test(model)
 
 
 if __name__ == '__main__':
     # define hyperparameters
     batch_size = 200
-    n_epochs = 6
-    train_size = None
+    n_epochs = 3
+    train_size = 200000
+    # define logger
+    wandb_logger = WandbLogger(project='lightning-ring-finder')
 
-    train()
+    # train()
 
-    # # load model
+    # load model
     # model = LitResNet18.load_from_checkpoint(
     #     'lightning_logs/version_34/checkpoints/epoch=2-step=255000.ckpt')
+    model = LitResNet18.load_from_checkpoint(
+        'lightning-ring-finder/hcuvyxnp/checkpoints/epoch=2-step=3000.ckpt', batch_size=batch_size)
 
-    # trainer = Trainer(accelerator='gpu', devices=1, max_epochs=n_epochs)
-    # trainer.test(model)
+    trainer = Trainer(accelerator='gpu', devices=1,
+                      max_epochs=n_epochs, logger=wandb_logger)
+    trainer.test(model)
