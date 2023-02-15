@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import torch
 import time
+from sklearn.preprocessing import normalize
 import plotly.express as px
 import plotly.graph_objs as go
 import plotly.subplots as sp
@@ -13,7 +14,7 @@ from pathlib import Path
 
 np.set_printoptions(threshold=sys.maxsize)
 
-root_dir = Path(__file__).parent.parent
+ROOT_DIR = Path(__file__).parent.parent
 pio.templates.default = 'presentation'
 fig_width = 700
 fig_height = 250
@@ -242,6 +243,8 @@ def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silen
     df = pd.DataFrame(y.reshape(-1, 25), columns=cols)
     df['n_rings'] = df[cols].apply(lambda x: np.sum(x != 0)//4, axis=1)
 
+
+
     # add a column for the number of rings
     columns = cols[:20]
     columns.append('n_rings')
@@ -266,7 +269,7 @@ def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silen
         fig.add_trace(go.Histogram(
             x=df[f'theta_{i}'], xbins=dict(start=0.1)), row=i+1, col=5)
 
-    fig.add_trace(go.Histogram(x=df['n_rings']), row=5, col=1)
+    fig.add_trace(go.Histogram(x=df['n_rings'], histnorm='probability'), row=5, col=1)
 
     fig.update_layout(title=title, width=1000,
                       modebar_add=["toggleSpikelines"])
@@ -279,9 +282,9 @@ def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silen
         fig.show()
 
 
-def load_sim_data() -> tuple[np.ndarray, pd.DataFrame]:
+def load_sim_data(create_dataset=False) -> tuple[np.ndarray, pd.DataFrame]:
     """
-    Load simulation data from a file.
+    Load simulation data from a csv files.
 
     This function filters events in a dataset based on the following criteria:
     - Removing events with NaN (Not a Number) in any of the parameters
@@ -303,15 +306,15 @@ def load_sim_data() -> tuple[np.ndarray, pd.DataFrame]:
 
     Returns
     -------
-
     """
-    img_dir = root_dir / 'data' / 'sim_data'
-    df = pd.read_csv(root_dir / 'data' / 'sim_data' /
+    # img_dir = ROOT_DIR / 'data' / 'sim_data' / 'X'
+    df = pd.read_csv(ROOT_DIR / 'data' / 'sim_data' /
                      'ring_hough_idealhough.csv')
     # remove nan and inf values
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.dropna()
 
+    # remove rows where x, y coordinates are out of bounds or radius is too large
     for i in range(10):
         df = df.iloc[np.where((df.iloc[:, i*5] >= 0.) &
                               (df.iloc[:, i*5] <= 72.) &
@@ -323,12 +326,28 @@ def load_sim_data() -> tuple[np.ndarray, pd.DataFrame]:
     df = df.iloc[np.where((df.iloc[:, 0:25] != 0.).any(axis=1))[0]]
     df = df.iloc[np.where((df.iloc[:, 25:50] != 0.).any(axis=1))[0]]
 
-    sim = np.array([cv2.imread(str(img_dir / i)) /
-                    255. for i in df['image_location']])
-    # return as 1-channel images
-    sim = sim[..., :1]
+    # get row indices of df
+    indices = df.index.values
 
-    return sim, df
+    sim_df = pd.read_csv(ROOT_DIR / 'data' / 'sim_data' / 'mrich_events.csv')
+    sim_df = sim_df.iloc[indices]
+
+    X = sim_df.to_numpy().reshape(-1, 72, 32, 1)
+    # get ideal hough parameters only
+    y = df.iloc[:, :25].to_numpy().reshape(-1, 5, 5)
+
+    if create_dataset:
+        target_X = ROOT_DIR / 'data' / 'sim_data' / 'X'
+        target_y = ROOT_DIR / 'data' / 'sim_data' / 'y'
+
+        print(f'Creating dataset in {target_X} and {target_y}...')
+        for i, (x, y) in enumerate(zip(X, y)):
+            im_path = target_X / f'{i}.png'
+            label_path = target_y / f'{i}.npy'
+            cv2.imwrite(str(im_path), 255*x)
+            np.save(str(label_path), y)
+
+    return X, df
 
 
 def hits_on_ring(y_true, y_pred):

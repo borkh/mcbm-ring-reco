@@ -1,6 +1,7 @@
 from utils.utils import *
 from pathlib import Path
 import cv2
+import pandas as pd
 import torchvision
 from torchvision import transforms, models
 import pytorch_lightning as pl
@@ -90,9 +91,15 @@ class LitResNet18(pl.LightningModule):
         self.valset = EventDataset(ROOT_DIR / 'data' / 'val',
                                    n_samples=valsize,
                                    transforms=transforms.ToTensor())
-        self.testset = EventDataset(ROOT_DIR / 'data' / 'test',
-                                    n_samples=testsize,
-                                    transforms=transforms.ToTensor())
+
+        # define testsets
+        self.dataset_names = ['test', 'sim_data']
+        self.testset_1 = EventDataset(ROOT_DIR / 'data' / self.dataset_names[0],
+                                      n_samples=testsize,
+                                      transforms=transforms.ToTensor())
+        self.testset_2 = EventDataset(ROOT_DIR / 'data' / self.dataset_names[1],
+                                      n_samples=None,
+                                      transforms=transforms.ToTensor())
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -108,7 +115,7 @@ class LitResNet18(pl.LightningModule):
         self.log('val_loss', loss)
         return {'val_loss': loss}
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx, dataloader_idx):
         x, y = batch
         y_hat = self(x)
         loss = self.loss(y_hat, y)
@@ -117,7 +124,7 @@ class LitResNet18(pl.LightningModule):
         samples = [plot_single_event(img, pars)
                    for img, pars in zip(x[:10], y_hat[:10])]
         self.logger.log_image(  # type: ignore
-            key='Model inference on test dataset', images=samples)
+            key=f'Model inference on dataset: {self.dataset_names[dataloader_idx]}', images=samples)
 
         # log the 5 worst predictions per batch
         losses = [self.loss(y_hat[i], y[i]) for i in range(len(y))]
@@ -129,19 +136,36 @@ class LitResNet18(pl.LightningModule):
         return {'test_loss': loss, 'x': worst[0], 'y': worst[1], 'y_hat': worst[2]}
 
     def test_epoch_end(self, outputs):
-        x = torch.cat([out['x'] for out in outputs])  # type: ignore
-        y = torch.cat([out['y'] for out in outputs])  # type: ignore
-        y_hat = torch.cat([out['y_hat'] for out in outputs])  # type: ignore
+        for idx, name in enumerate(self.dataset_names):
+            output = outputs[idx]
+            x = torch.cat([out['x'] for out in output])  # type: ignore
+            y = torch.cat([out['y'] for out in output])  # type: ignore
+            y_hat = torch.cat([out['y_hat'] for out in output])  # type: ignore
 
-        losses = [self.loss(y_hat[i], y[i]) for i in range(len(y))]
-        losses, indices = torch.sort(torch.stack(losses), descending=True)
+            losses = [self.loss(y_hat[i], y[i]) for i in range(len(y))]
+            losses, indices = torch.sort(torch.stack(losses), descending=True)
 
-        # log the worst predictions of the whole test set
-        n_items = max(50, len(x))
-        worst_samples = [plot_single_event(img, pars)
-                         for img, pars in zip(x[:n_items], y_hat[:n_items])]
-        self.logger.log_image(  # type: ignore
-            key='Worst predictions on test dataset', images=worst_samples)
+            # log the worst predictions of the whole test set
+            n_items = max(50, len(x))
+            worst_samples = [plot_single_event(img, pars)
+                             for img, pars in zip(x[:n_items], y_hat[:n_items])]
+            self.logger.log_image(  # type: ignore
+                key=f'Worst predictions on dataset: {name}', images=worst_samples)
+
+            # create histograms of the parameters
+            y = y.cpu().numpy().reshape(-1, 25)
+            y_hat = y_hat.cpu().numpy().reshape(-1, 25)
+            df_y = pd.DataFrame(y).hist(bins=50)
+            df_y_hat = pd.DataFrame(y_hat).hist(bins=50)
+            print(df_y.shape)
+            self.logger.log_image(key=f'Ring parameters of dataset: {name}',  # type: ignore
+                                  images=[df_y])
+            self.logger.log_image(key=f'Predicted ring parameters of dataset: {name}',  # type: ignore
+                                    images=[df_y_hat])
+            # self.logger.log_text(key=f'Ring parameters of dataset: {name}',  # type: ignore
+            #                      dataframe=df_y)
+            # self.logger.log_text(key=f'Predicted ring parameters of dataset: {name}',  # type: ignore
+            #                      dataframe=df_y_hat)
 
     def train_dataloader(self):
         return DataLoader(self.trainset, batch_size=self.batch_size,
@@ -152,8 +176,11 @@ class LitResNet18(pl.LightningModule):
                           num_workers=12, shuffle=False)
 
     def test_dataloader(self):
-        return DataLoader(self.testset, batch_size=self.batch_size,
-                          num_workers=12, shuffle=False)
+        loader_1 = DataLoader(self.testset_1, batch_size=self.batch_size,  # type: ignore
+                              num_workers=12, shuffle=False)
+        loader_2 = DataLoader(self.testset_2, batch_size=self.batch_size,  # type: ignore
+                              num_workers=12, shuffle=False)
+        return [loader_1, loader_2]
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(
@@ -186,33 +213,31 @@ def train():
 
     trainer.fit(model)
     trainer.test(model)
+    model.to_onnx(ROOT_DIR / 'models' / 'lightning-ring-finder.onnx',
+                  input_sample=torch.randn(10, 1, 72, 32))
 
 
 if __name__ == '__main__':
     # define hyperparameters
-    batch_size = 32
-    n_epochs = 5
-    dataset_sizes = (10000, 1000, 1000) # (None, None, None)
+    batch_size = 1000
+    n_epochs = 2
+    dataset_sizes = (0, 0, 2000)  # (None, None, None)
     # define logger
     wandb_logger = WandbLogger(project='lightning-ring-finder')
     # simple_profiler = SimpleProfiler()
 
-    train()
+    # train()
 
     # load model
-    # model = LitResNet18.load_from_checkpoint(
-    #     'lightning_logs/version_34/checkpoints/epoch=2-step=255000.ckpt',
-    #     batch_size=batch_size,
-    #     dataset_sizes=dataset_sizes)
-    # # model = LitResNet18.load_from_checkpoint(
-    # #     'lightning-ring-finder/hcuvyxnp/checkpoints/epoch=2-step=3000.ckpt',
-    # #     batch_size=batch_size,
-    # #     dataset_sizes=dataset_sizes)
+    model = LitResNet18.load_from_checkpoint(
+        'lightning-ring-finder/hcuvyxnp/checkpoints/epoch=2-step=3000.ckpt',
+        batch_size=batch_size,
+        dataset_sizes=dataset_sizes)
 
-    # trainer = Trainer(accelerator='gpu', devices=1,
-    #                   max_epochs=n_epochs,
-    #                   logger=wandb_logger
-    #                   #   profiler=simple_profiler,
-    #                   )
+    trainer = Trainer(accelerator='gpu', devices=1,
+                      max_epochs=n_epochs,
+                      logger=wandb_logger,
+                      #   profiler=simple_profiler,
+                      )
 
-    # trainer.test(model)
+    trainer.test(model)
