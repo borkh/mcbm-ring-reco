@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
+import torch
 import time
 import plotly.express as px
 import plotly.graph_objs as go
@@ -42,7 +43,7 @@ def evaluate(model, data_generator):
     return model.evaluate(data_generator)
 
 
-def plot_single_event(image: np.ndarray, Y1=None, Y2=None, Y3=None,
+def plot_single_event(image, Y1=None, Y2=None, Y3=None,
                       Y4=None, scaling: int = 10) -> np.ndarray:
     """
     Plot ellipses on an image.
@@ -64,12 +65,18 @@ def plot_single_event(image: np.ndarray, Y1=None, Y2=None, Y3=None,
         np.ndarray
             The modified image with ellipses plotted on it.
     """
+    if type(image) == torch.Tensor:
+        image = image.permute(1, 2, 0).cpu().numpy()
+        image = np.repeat(image, 3, axis=2)
 
     image = cv2.resize(image, (image.shape[1]*scaling,
                                image.shape[0]*scaling),
                        interpolation=cv2.INTER_AREA)
-    colors = [(0, 1, 0), (1, 0, 0), (1, 1, 0), (0, 1, 1)]
-    Y_values = [Y1, Y2, Y3, Y4]
+    colors = [(0., 1., 1.), (1., 0., 0.), (1., 1., 0.), (0., 1., 1.)]
+    if type(Y1) == torch.Tensor:
+        Y_values = [y.cpu().numpy() for y in [Y1, Y2, Y3, Y4] if y is not None]
+    else:
+        Y_values = [Y1, Y2, Y3, Y4]
 
     for Y, color in zip(Y_values, colors):  # type: ignore
         if Y is not None:
@@ -84,7 +91,7 @@ def plot_single_event(image: np.ndarray, Y1=None, Y2=None, Y3=None,
     return image
 
 
-def display_images(imgs: np.ndarray, plot_dir=None, col_width: int = 5, title="", silent=False) -> None:
+def display_images(imgs: np.ndarray, plot_dir=None, col_width: int = 5, title="", silent=False) -> np.ndarray:
     """
     Display a set of images in a grid.
 
@@ -112,9 +119,11 @@ def display_images(imgs: np.ndarray, plot_dir=None, col_width: int = 5, title=""
     except ValueError as e:
         print(f'\nError: {e}')
         print(f'The number of images must be at least {col_width}.')
+    finally:
+        return imgs
 
 
-def fit_rings(images, params, plot_dir=None, title="", silent=False) -> None:
+def fit_rings(images, params, plot_dir=None, title="", silent=False) -> np.ndarray:
     """
     Uses the `plot_single_event` function to fit rings to a set of images
     with the given parameters. The resulting images are then displayed in a
@@ -138,7 +147,7 @@ def fit_rings(images, params, plot_dir=None, title="", silent=False) -> None:
         images = np.repeat(images, 3, axis=-1)
     ring_fits = np.array([plot_single_event(x, y)
                           for x, y in zip(images, params)])
-    display_images(ring_fits, plot_dir, title=title, silent=silent)
+    return display_images(ring_fits, plot_dir, title=title, silent=silent)
 
 
 def plot_lr_range(lr_finder, plot_dir, n_skip_beginning=20, n_skip_end=3, silent=False):
@@ -207,7 +216,6 @@ def plot_loss(plot_dir: Path, silent: bool = False) -> None:
     pio.write_html(fig, plot_path, auto_open=not silent)
     pio.write_image(fig, plot_path.replace('.html', '.png'),
                     width=fig_width, height=fig_height)
-
 
 
 def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silent=False):
@@ -298,17 +306,18 @@ def load_sim_data() -> tuple[np.ndarray, pd.DataFrame]:
 
     """
     img_dir = root_dir / 'data' / 'sim_data'
-    df = pd.read_csv(root_dir / 'data' / 'sim_data' / 'ring_hough_idealhough.csv')
+    df = pd.read_csv(root_dir / 'data' / 'sim_data' /
+                     'ring_hough_idealhough.csv')
     # remove nan and inf values
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.dropna()
 
     for i in range(10):
         df = df.iloc[np.where((df.iloc[:, i*5] >= 0.) &
-                            (df.iloc[:, i*5] <= 72.) &
-                            (df.iloc[:, i*5 + 1] >= 0.) &
-                            (df.iloc[:, i*5 + 1] <= 72.) &
-                            (df.iloc[:, i*5 + 2] <= 10.))[0]]
+                              (df.iloc[:, i*5] <= 72.) &
+                              (df.iloc[:, i*5 + 1] >= 0.) &
+                              (df.iloc[:, i*5 + 1] <= 72.) &
+                              (df.iloc[:, i*5 + 2] <= 10.))[0]]
 
     # remove rows where all values are 0
     df = df.iloc[np.where((df.iloc[:, 0:25] != 0.).any(axis=1))[0]]

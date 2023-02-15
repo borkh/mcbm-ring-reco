@@ -1,6 +1,7 @@
 wandb/
 venv/
 lightning_logs/
+lightning-ring-finder/
 
 .vscode/
 .lr_find*
