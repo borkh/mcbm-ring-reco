@@ -10,7 +10,7 @@ detector (72x32 pixels). The output of the CNN contains the ring parameters:
 ring center (x,y) and radius (r). The model is trained using the TensorFlow
 Keras API.
 
-## File Description
+<!-- ## File Description
 
 * `data/create_data.py`: Creates training, testing and validation data from
   a toymodel. This data includes images that look like events on the mRICH
@@ -142,4 +142,4 @@ https://www.tensorflow.org/install/gpu
    for running the tests after conversion, ROOT needs to be installed.
 
    If the `--model_path` argument is not specified, the latest model in the
-   `models/checkpoints` directory will be used.
+   `models/checkpoints` directory will be used. -->

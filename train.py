@@ -1,231 +1,262 @@
-import datetime
-import os
-import sys
-import traceback
-
-import absl.logging
-import matplotlib.pyplot as plt
-
-# suppress warnings and info messages
-absl.logging.set_verbosity(absl.logging.ERROR)  # nopep8
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
-os.environ['WANDB_SILENT'] = 'true'  # nopep8
-
-import argparse
-
-import cv2
-import tensorflow as tf
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # nopep8
-
-from keras_lr_finder import LRFinder
-from tensorflow.keras.optimizers import SGD  # type: ignore
-from tensorflow.keras.callbacks import CSVLogger  # type: ignore
-from wandb.keras import WandbCallback
-
-import wandb
+from utils import *
 from pathlib import Path
+import cv2
+import pandas as pd
+from torchvision import transforms, models
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.loggers import WandbLogger  # type: ignore
+from pytorch_lightning.profilers import SimpleProfiler
+from pytorch_lightning import Trainer
+from torch.utils.data import Dataset, DataLoader
+import tempfile
+import torch
+import os
+from matplotlib import pyplot as plt
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-root_dir = Path(__file__).parent
-sys.path.append(str(root_dir))
+ROOT_DIR = Path(__file__).parent
+MODELS_DIR = ROOT_DIR / 'wandb'
 
-from utils.utils import *  # nopep8
-from utils.one_cycle import *  # nopep8
-from models.model import *  # nopep8
-from data.create_data import DataGen  # nopep8
-
-
-def lr_range_test(start_lr=1e-7, end_lr=5, epochs=5) -> None:
-    """
-    Find the optimal learning rate range for the model.
-
-    This function trains the model for a few epochs with a learning rate schedule
-    that increases the learning rate exponentially from a very small value to a very large value.
-    The learning rate is plotted against the loss, and the optimal learning rate range is determined
-    based on the minimum value of the loss curve. The 'max_lr' and 'init_lr' values are then set
-    in the run_config dictionary in sweep_configs.py. 'max_lr' should be set to the minimum value of
-    the loss curve, and 'init_lr' should be set to about 1/20 to 1/100 of 'max_lr'.
-
-    Parameters
-    ----------
-        start_lr: float, optional
-            The initial learning rate. Default is 1e-7.
-        end_lr: float, optional
-            The final learning rate. Default is 5.
-        epochs: int, optional
-            The number of epochs to train the model for. Default is 5.
-    """
-    n = int(n_training_files * 0.05)
-    training_size = n if n < 100000 else 100000
-    os.environ['WANDB_MODE'] = 'dryrun'
-    with wandb.init(config=None):  # type: ignore
-        c = wandb.config
-
-        train_gen = DataGen(train_dir, batch_size=training_size)
-        x, y = train_gen[0]
-
-        model = build_model(input_shape_, c)
-
-        opt = SGD(1e-5, momentum=0.95)
-
-        model.compile(optimizer=opt, loss=custom_loss)
-
-        lr_finder = LRFinder(model)
-        lr_finder.find(x, y, start_lr=start_lr, end_lr=end_lr,
-                       batch_size=c.batch_size, epochs=epochs)
-
-        plot_dir = root_dir / 'plots'
-        plot_lr_range(lr_finder, plot_dir, silent=silent)
+NAME = 'version_'
+versions = [int(i.name.split(NAME)[1])
+            for i in MODELS_DIR.glob(f'*{NAME}*')]
+if versions == []:
+    new_version = 0
+else:
+    new_version = max(versions) + 1
 
 
-def train(c=None) -> None:
-    """
-    Trains a model using the specified hyperparameters and saves the model and
-    training history to a specified directory.
+class EventDataset(Dataset):
+    def __init__(self, target_dir, transforms=None, n_samples=None):
+        super(EventDataset, self).__init__()
+        self.target_dir = Path(target_dir).absolute()
+        self.transforms = transforms
 
-    This function loads training and validation data generators, builds a model
-    using a specified architecture, compiles the model with a mean squared error
-    loss function and an SGD optimizer with a learning rate schedule based on
-    the 1cycle policy, and trains the model. The model and training history are
-    then saved to 'models/checkpoints/'.
+        if n_samples is None:
+            self.n_samples = len(list((self.target_dir / 'y').glob('*.npy')))
+        else:
+            self.n_samples = n_samples
 
-    Parameters
-    ----------
-        c: dict, optional
-            A dictionary containing the hyperparameters for the model. The
-            dictionary should include the following keys:
-                - 'batch_size': The number of samples per gradient update.
-                - 'epochs': The number of epochs to train the model for.
-                - 'init_lr': The initial learning rate.
-                - 'max_lr': The maximum learning rate.
-                - 'conv_layers': The number of convolutional layers in the model.
-                - 'nof_initial_filters': The number of filters in the first
-                    convolutional layer.
-                - 'conv_kernel_size': The size of the convolutional kernel.
+    def __getitem__(self, index):
+        X_dir = self.target_dir / 'X'
+        y_dir = self.target_dir / 'y'
+        x = cv2.imread(str(X_dir / f'{index}.png'), cv2.IMREAD_GRAYSCALE)
+        y = np.load(y_dir / f'{index}.npy').astype(np.float32)
 
-    Returns
-    -------
-        None
-    """
-    model_path = Path(root_dir, 'models', 'checkpoints',
-                      f'{name}.model')
+        if self.transforms:
+            x = self.transforms(x)
+        y = torch.from_numpy(y)
 
-    with wandb.init(config=None):  # type: ignore
-        c = wandb.config
+        return x, y
 
-        try:
-            csv_path = plot_dir / 'loss.csv'
-            csv_logger = CSVLogger(csv_path, append=True, separator=',')
-            # define data generators for training and validation
-            train_gen = DataGen(train_dir, batch_size=c.batch_size)
-            val_gen = DataGen(val_dir, batch_size=32)
-
-            # calculate the number of steps per epoch and the total number of steps
-            spe = train_gen.n // c.batch_size
-            steps = spe * c.epochs
-
-            lr_schedule = OneCycleSchedule(
-                c.init_lr, c.max_lr, steps, plot_dir=plot_dir, silent=silent)
-
-            model = build_model(input_shape_, c)
-
-            opt = tf.keras.optimizers.SGD(
-                c.init_lr, momentum=0.95, nesterov=True)
-            model.compile(optimizer=opt, loss=custom_loss)
-
-            model.fit(train_gen,
-                      validation_data=val_gen,
-                      steps_per_epoch=spe,
-                      epochs=c.epochs,
-                      shuffle=True,
-                      callbacks=[WandbCallback(), lr_schedule, csv_logger])
-
-            model.save(model_path)
-
-            lr_schedule.plot()
-            plot_loss(plot_dir, silent=silent)
-
-            X, _ = val_gen[0]
-            predictions, _ = predict(model, X)
-            fit_rings(
-                X, predictions, plot_dir, title='Model Predictions on Validation Data', silent=silent)
-
-        except Exception:
-            print(traceback.format_exc())
+    def __len__(self):
+        return self.n_samples
 
 
-if __name__ == "__main__":
-    """
-    This script trains a model using the specified hyperparameters in `models/model.py`
-    and saves the model and training history to the `models/checkpoints/` directory.
+class LitResNet18(pl.LightningModule):
+    def __init__(self, batch_size, dataset_sizes=None):
+        super(LitResNet18, self).__init__()
+        # define hyperparameters
+        # learning rate is only set for tracking purposes
+        # it will be overwritten by the scheduler
+        self.learning_rate = 0.1
+        self.batch_size = batch_size
+        self.dataset_sizes = dataset_sizes
 
-    Arguments
-    ---------
-        train_dir: str
-            The directory containing the training data. Default is 'data/train'.
-        val_dir: str
-            The directory containing the validation data. Default is 'data/val'.
-        find_lr_range: bool
-            If set, no training will be performed, but the learning rate range
-            finder will be run to determine the optimal learning rate range.
-            Default is False.
-        silent: bool
-            If set, plots will not be shown, but saved to the plots directory.
-            Default is False.
+        # define loss
+        self.loss = torch.nn.MSELoss()
 
-    Examples
-    --------
-    Run LR range test:
-        python train.py --find_lr_range
-    Run training with data in 'data/train' and 'data/val':
-        python train.py
-    """
-    try:
-        __IPYTHON__  # type: ignore
-    except NameError:
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--train_dir', type=str,
-                            default=str(Path(root_dir, 'data', 'train')),
-                            help='The directory containing the training data.')
-        parser.add_argument('--val_dir', type=str,
-                            default=str(Path(root_dir, 'data', 'val')),
-                            help='The directory containing the validation data.')
-        parser.add_argument('--find_lr_range', action='store_true',
-                            help='''Run the learning rate range finder to determine
-                            the optimal learning rate range.''')
-        parser.add_argument('--silent', action='store_true',
-                            help='''If set, plots will not be shown, but saved
-                            to the plots directory.''')
-        args = parser.parse_args()
+        # define model
+        self.resnet = models.resnet18(weights=None)
+        # change the input channel to 1
+        self.resnet.conv1 = torch.nn.Conv2d(
+            1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.resnet.fc = torch.nn.Linear(512, 25)
 
-        train_dir = Path(args.train_dir)
-        val_dir = Path(args.val_dir)
-        find_lr_range = args.find_lr_range
-        silent = args.silent
-    else:
-        train_dir = Path(root_dir, 'data', 'train')
-        val_dir = Path(root_dir, 'data', 'val')
-        find_lr_range = False
-        silent = False
+    def forward(self, x):
+        x = self.resnet(x)
+        x = x.view(-1, 5, 5)
+        return x
 
-    # calculate the number of training files
-    n_training_files = len(list(Path(train_dir, 'X').glob('*.png')))
+    def setup(self, stage=None):
+        # log hyperparameters
+        self.max_lr = self.learning_rate * 25
+        self.save_hyperparameters({
+            'batch_size': self.batch_size,
+            'initial_lr': self.learning_rate,
+            'max_lr': self.max_lr,
+            'dataset_sizes': self.dataset_sizes
+        })
+        # define datasets
+        if self.dataset_sizes is None:
+            trainsize, valsize, testsize = None, None, None
+        else:
+            trainsize = self.dataset_sizes[0]
+            valsize = self.dataset_sizes[1]
+            testsize = self.dataset_sizes[2]
+        self.trainset = EventDataset(ROOT_DIR / 'data' / 'train',
+                                     n_samples=trainsize,
+                                     transforms=transforms.ToTensor())
+        self.valset = EventDataset(ROOT_DIR / 'data' / 'val',
+                                   n_samples=valsize,
+                                   transforms=transforms.ToTensor())
 
-    # create name for model
-    name = f'{n_training_files//1000000}M'
-    now = datetime.datetime.now().strftime('%Y%m%d%H%M')
-    name = f'{name}-{now}'
+        # define testsets
+        self.dataset_names = ['test', 'sim_data']
+        self.testset_1 = EventDataset(ROOT_DIR / 'data' / self.dataset_names[0],
+                                      n_samples=testsize,
+                                      transforms=transforms.ToTensor())
+        self.testset_2 = EventDataset(ROOT_DIR / 'data' / self.dataset_names[1],
+                                      n_samples=None,
+                                      transforms=transforms.ToTensor())
 
-    # load sample png form 'data/train/X' to get input shape
-    sample_img_path = Path(train_dir, 'X', '0.png')
-    input_shape_ = cv2.imread(
-        str(sample_img_path))[..., :1].shape  # type: ignore
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss(y_hat, y)
+        self.log('train_loss', loss)
+        return {'loss': loss}
 
-    if find_lr_range:
-        sweep_id = wandb.sweep(run_config)
-        wandb.agent(sweep_id, lr_range_test, count=1)
-    else:
-        plot_dir = Path(root_dir, 'plots', name)
-        plot_dir.mkdir()
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss(y_hat, y)
+        self.log('val_loss', loss)
+        return {'val_loss': loss}
 
-        sweep_id = wandb.sweep(run_config, project='ring-finder')
-        wandb.agent(sweep_id, train, count=1)
+    def test_step(self, batch, batch_idx, dataloader_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss(y_hat, y)
+
+        # log samples of the model inference
+        samples = [plot_single_event(img, pars)
+                   for img, pars in zip(x[:10], y_hat[:10])]
+        self.logger.log_image(  # type: ignore
+            key=f'Model inference on dataset: {self.dataset_names[dataloader_idx]}', images=samples)
+
+        # log the 5 worst predictions per batch
+        losses = [self.loss(y_hat[i], y[i]) for i in range(len(y))]
+        losses, indices = torch.sort(torch.stack(losses), descending=True)
+
+        worst = x[indices[:5]], y[indices[:5]], y_hat[indices[:5]]
+
+        self.log('test_loss', loss)
+        return {'test_loss': loss, 'x': worst[0], 'y': worst[1], 'y_hat': worst[2]}
+
+    def test_epoch_end(self, outputs):
+        for idx, name in enumerate(self.dataset_names):
+            output = outputs[idx]
+            x = torch.cat([out['x'] for out in output])  # type: ignore
+            y = torch.cat([out['y'] for out in output])  # type: ignore
+            y_hat = torch.cat([out['y_hat'] for out in output])  # type: ignore
+
+            losses = [self.loss(y_hat[i], y[i]) for i in range(len(y))]
+            losses, indices = torch.sort(torch.stack(losses), descending=True)
+
+            # log the worst predictions of the whole test set
+            n_items = max(50, len(x))
+            worst_samples = [plot_single_event(img, pars)
+                             for img, pars in zip(x[:n_items], y_hat[:n_items])]
+            self.logger.log_image(  # type: ignore
+                key=f'Worst predictions on dataset: {name}', images=worst_samples)
+
+            # create histograms of the parameters
+            y = y.cpu().numpy().reshape(-1, 25)
+            y_hat = y_hat.cpu().numpy().reshape(-1, 25)
+            df_y = pd.DataFrame(y).hist(bins=50, figsize=(10, 10))
+            df_y_hat = pd.DataFrame(y_hat).hist(bins=50, figsize=(10, 10))
+            with tempfile.NamedTemporaryFile(suffix='.png') as f:
+                plt.savefig(f.name)
+                # load the image with cv rgb
+                img = cv2.imread(f.name, cv2.IMREAD_COLOR)
+                self.logger.log_image(key=f'Ring parameters: {name}',  # type: ignore
+                                      images=[img])
+            with tempfile.NamedTemporaryFile(suffix='.png') as f:
+                plt.savefig(f.name)
+                img = cv2.imread(f.name, cv2.IMREAD_COLOR)
+                self.logger.log_image(key=f'Predicted ring: {name}',  # type: ignore
+                                      images=[img])
+
+    def train_dataloader(self):
+        return DataLoader(self.trainset, batch_size=self.batch_size,
+                          num_workers=12, shuffle=True)
+
+    def val_dataloader(self):
+        return DataLoader(self.valset, batch_size=self.batch_size,
+                          num_workers=12, shuffle=False)
+
+    def test_dataloader(self):
+        loader_1 = DataLoader(self.testset_1, batch_size=self.batch_size,  # type: ignore
+                              num_workers=12, shuffle=False)
+        loader_2 = DataLoader(self.testset_2, batch_size=self.batch_size,  # type: ignore
+                              num_workers=12, shuffle=False)
+        return [loader_1, loader_2]
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.SGD(
+            self.parameters(),
+            nesterov=True,
+            lr=self.learning_rate,
+            momentum=0.9
+        )
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(  # type: ignore
+            optimizer,
+            max_lr=self.max_lr,
+            three_phase=True,
+            total_steps=self.trainer.estimated_stepping_batches
+        )
+        return [optimizer], [{'scheduler': scheduler, 'interval': 'step'}]
+
+
+def train():
+    # define model
+    model = LitResNet18(batch_size=batch_size, dataset_sizes=dataset_sizes)
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+    trainer = Trainer(accelerator='gpu',
+                      devices=1,
+                      max_epochs=n_epochs,
+                      auto_lr_find=True,
+                      #   auto_scale_batch_size='binsearch',
+                      callbacks=[lr_monitor],
+                      logger=wandb_logger)
+    trainer.tune(model)
+
+    trainer.fit(model)
+    trainer.test(model)
+    model.to_onnx(ROOT_DIR / 'models' / f'{NAME}{new_version}' / 'model.onnx',
+                  input_sample=torch.randn(10, 1, 72, 32))
+
+
+if __name__ == '__main__':
+    # define hyperparameters
+    batch_size = 100
+    n_epochs = 3
+    dataset_sizes = (10000, 100, 100)
+    # dataset_sizes = (None, None, None)
+    # define logger
+    wandb_logger = WandbLogger(
+        project='models',
+        save_dir=ROOT_DIR,
+        id=f'{NAME}{new_version}',
+        name=f'{NAME}{new_version}',
+        log_model=True
+    )
+    # simple_profiler = SimpleProfiler()
+
+    train()
+
+    # load model
+    # model = LitResNet18.load_from_checkpoint(
+    #     'models/testversion3/checkpoints/epoch=2-step=300.ckpt',
+    #     batch_size=batch_size,
+    #     dataset_sizes=dataset_sizes)
+
+    # trainer = Trainer(accelerator='gpu', devices=1,
+    #                   max_epochs=n_epochs,
+    #                   logger=wandb_logger,
+    #                   #   profiler=simple_profiler,
+    #                   )
+
+    # trainer.test(model)

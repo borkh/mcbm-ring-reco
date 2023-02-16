@@ -17,7 +17,7 @@ from tqdm import tqdm
 root_dir = Path(__file__).parent.parent
 sys.path.append(str(root_dir))
 
-from utils.utils import *  # nopep8
+from utils import *  # nopep8
 
 
 class DataGen(tf.keras.utils.Sequence):
@@ -52,7 +52,7 @@ class DataGen(tf.keras.utils.Sequence):
             Returns the number of batches in the data generator.
     """
 
-    def __init__(self, target_dir, batch_size=32, n=None): 
+    def __init__(self, target_dir, batch_size=32, n=None):
         self.target_dir = tf.compat.as_str_any(target_dir)
         self.batch_size = batch_size
         self.current_index = 0
@@ -519,7 +519,7 @@ if __name__ == "__main__":
         append = False
         force = False
         silent = False
-    
+
     plot_dir = root_dir / 'plots'
 
     if target_dir is not None:
@@ -554,4 +554,5 @@ if __name__ == "__main__":
                   title=f'Sample images', silent=silent)
 
         y = np.array([datagen[i][1] for i in range(10)])
-        ring_params_hist(y, plot_dir, title='Histograms of created data', silent=silent)
+        ring_params_hist(
+            y, plot_dir, title='Histograms of created data', silent=silent)

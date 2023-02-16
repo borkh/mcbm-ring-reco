@@ -2,12 +2,11 @@ import subprocess
 import pandas as pd
 import sys
 from pathlib import Path
-from io import StringIO
 
 
 root_dir = Path(__file__).parent.parent
 sys.path.append(str(root_dir))
-from utils.utils import *  # nopep8
+from utils import *  # nopep8
 
 script_dir = root_dir / "onnx"
 os.chdir(script_dir)
