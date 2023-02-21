@@ -1,92 +1,23 @@
 import os
 import sys
 from pathlib import Path
-from typing import Union
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
 
 import argparse
 
 import numpy as np
-import tensorflow as tf
 from numpy.random import choice
 from sklearn.datasets import make_circles
 from sklearn.preprocessing import normalize
 from tqdm import tqdm
+from torchvision import transforms
 
-root_dir = Path(__file__).parent.parent
-sys.path.append(str(root_dir))
+ROOT_DIR = Path(__file__).parent.parent
+sys.path.append(str(ROOT_DIR))
 
 from utils import *  # nopep8
-
-
-class DataGen(tf.keras.utils.Sequence):
-    """
-    A custom data generator class for loading images and labels from a
-    directory.
-
-    This class extends the Sequence class from tf.keras.utils, allowing it to be
-    used for training and evaluation of a model using the fit method
-    in tf.keras.Model.
-
-    Attributes
-    ----------
-        target_dir: str
-            The directory containing the images and labels.
-        batch_size: int
-            The batch size.
-        n:
-            The number of samples the data generator should return. If None,
-            all samples in the target directory will be returned.
-
-    Methods:
-        init(self, target_dir, batch_size=32, n=None):
-            Initializes the data generator with the target directory and batch size.
-        __iter__(self):
-            Returns the iterator object.
-        __next__(self):
-            Returns the next batch of data.
-        __getitem__(self, index):
-            Returns the batch of data at the specified index.
-        __len__(self):
-            Returns the number of batches in the data generator.
-    """
-
-    def __init__(self, target_dir, batch_size=32, n=None):
-        self.target_dir = tf.compat.as_str_any(target_dir)
-        self.batch_size = batch_size
-        self.current_index = 0
-        if n is None:
-            self.n = len(list(Path(self.target_dir, 'X').glob('*.png')))
-        else:
-            self.n = n
-
-    def __iter__(self):
-        return self  # return the iterator object
-
-    def __next__(self):
-        if self.current_index >= self.n:
-            raise StopIteration
-        else:
-            result = self.__getitem__(self.current_index)
-            self.current_index += 1
-            return result
-
-    def __getitem__(self, index):
-        start = index * self.batch_size
-        end = (index + 1) * self.batch_size
-        X = []
-        y = []
-        for i in range(start, end):
-            x_path = Path(self.target_dir, 'X', f'{i}.png')
-            y_path = Path(self.target_dir, 'y', f'{i}.npy')
-            X.append(cv2.imread(str(x_path), cv2.IMREAD_GRAYSCALE)  # type: ignore
-                     [:, :, np.newaxis] / 255.)
-            y.append(np.load(str(y_path)))
-        return np.array(X), np.array(y)
-
-    def __len__(self):
-        return self.n//self.batch_size
+from train import *  # nopep8
 
 
 class Display(np.ndarray):
@@ -514,13 +445,11 @@ if __name__ == "__main__":
         silent = args.silent
     else:
         auto = True
-        target_dir = root_dir / 'data' / 'train' if not auto else None
+        target_dir = ROOT_DIR / 'data' / 'train' if not auto else None
         n_files = 10000
         append = False
         force = False
         silent = False
-
-    plot_dir = root_dir / 'plots'
 
     if target_dir is not None:
         make_dirs(target_dir)
@@ -528,31 +457,26 @@ if __name__ == "__main__":
         add_to_dataset(target_dir=target_dir, n=n_files, append=append)
 
         # load sample images and labels to verify correctness of the dataset
-        datagen = DataGen(target_dir, batch_size=200)
-        X, y = datagen[0]
+        transforms = transforms.Compose([transforms.ToTensor()]) # type: ignore
+        ds = EventDataset(target_dir, n_samples=200, transforms=transforms)
+        dl = DataLoader(ds, batch_size=200, shuffle=True)
+        X, y = next(iter(dl))
 
         # display_images(X)
-        fit_rings(X, y, plot_dir,
-                  title=f'Sample images', silent=silent)
-
-        y = np.array([datagen[i][1] for i in range(10)])
-        ring_params_hist(y, title='Histograms of created data', silent=silent)
+        fit_rings(X, y, title=f'Sample images', silent=silent)
     elif auto:
         for dataset, n in zip(['train', 'val', 'test'], [n_files, n_files//8, n_files//8]):
-            target_dir = root_dir / 'data' / dataset
+            target_dir = ROOT_DIR / 'data' / dataset
             make_dirs(target_dir)
             add_to_dataset(target_dir=target_dir, n=n, append=append)
 
         # load sample images and labels to verify correctness of the dataset
         # only load the train dataset
-        target_dir = root_dir / 'data' / 'train'
-        datagen = DataGen(target_dir, batch_size=200)
-        X, y = datagen[0]
+        target_dir = ROOT_DIR / 'data' / 'train'
+        transforms = transforms.Compose([transforms.ToTensor()]) # type: ignore
+        ds = EventDataset(target_dir, n_samples=200, transforms=transforms)
+        dl = DataLoader(ds, batch_size=200, shuffle=True)
+        X, y = next(iter(dl))
 
         # display_images(X)
-        fit_rings(X, y, plot_dir,
-                  title=f'Sample images', silent=silent)
-
-        y = np.array([datagen[i][1] for i in range(10)])
-        ring_params_hist(
-            y, plot_dir, title='Histograms of created data', silent=silent)
+        fit_rings(X, y, title=f'Sample images', silent=silent)

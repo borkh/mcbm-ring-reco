@@ -2,10 +2,14 @@
 #include<fstream>
 #include<iostream>
 #include<tuple>
+#include<thread>
 #define CBM_QA_EVENTBASED
 
-Ort::Env env{OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ring_finder"};
-Ort::Session session(env, "../models/model.onnx", Ort::SessionOptions(nullptr));
+// OrtThreadingOptions* tp_options;
+// // Ort::ThrowOnError(Ort::GetApi().CreateThreadingOptions(&tp_options));
+
+// tp_options->SetGlobalIntraOpNumThreads(2);
+
 
 class QA : public FairTask{
 	virtual InitStatus Init();
@@ -27,11 +31,28 @@ private:
 	TClonesArray* fRichHits = nullptr;
 	TClonesArray* fRichRings = nullptr;
 	TClonesArray* fRichRingMatches = nullptr;
+  Ort::Env* env = nullptr;
+  Ort::Session* session = nullptr;
 
 	ClassDef(QA,1);
 };
 
 InitStatus QA::Init(){
+  const int num_threads = 4;
+  // OrtThreadingOptions* tp_options = Ort::ThreadingOptions::Create(num_threads);
+  // tp_options->SetGlobalIntraOpNumThreads(2);
+
+  Ort::SessionOptions session_options;
+  session_options.SetIntraOpNumThreads(1);
+  session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+  session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+  session_options.SetInterOpNumThreads(12);
+
+
+  env = new Ort::Env{OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ring_finder"};
+  session = new Ort::Session(*env, "../models/model.onnx", session_options);
+
+
   std::cout << "QA Init called !" << std::endl;
   FairRootManager* manager = FairRootManager::Instance();
 
@@ -91,17 +112,17 @@ void QA::Exec(Option_t* /*option*/) {
       // write 0 unless i is in indices
       if (std::find(indices.begin(), indices.end(), i) != indices.end()) {
               input_batch[i] = 1;
-              cout << 1;
+              // cout << 1;
       }
       else {
               input_batch[i] = 0;
-              cout << 0;
+              // cout << 0;
       }
       if (i < n_pixels - 1) {
-              cout << ",";
+              // cout << ",";
       }
   }
-  cout << std::endl;
+  // cout << std::endl;
 
   const char* input_names[] = {"input_1"};
   const char* output_names[] = {"reshape"};
@@ -115,16 +136,16 @@ void QA::Exec(Option_t* /*option*/) {
   auto allocator_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
   Ort::Value input_tensor = Ort::Value::CreateTensor<float>(allocator_info, input_batch.data(), input_batch.size(), input_shape.data(), input_shape.size());
 
-  auto output_tensor = session.Run(Ort::RunOptions{nullptr}, input_names, &input_tensor, 1, output_names, 1);
+  auto output_tensor = session->Run(Ort::RunOptions{nullptr}, input_names, &input_tensor, 1, output_names, 1);
   float* intarr = output_tensor.front().GetTensorMutableData<float>();
   vector<float> output_tensor_values {intarr, intarr + bs * n_rings * n_params};
   for(int i{}; i < output_tensor_values.size(); i++) {
-      cout << output_tensor_values[i];
+      // cout << output_tensor_values[i];
       if (i < output_tensor_values.size() - 1) {
-              cout << ",";
+              // cout << ",";
       }
   }
-  cout << std::endl;
+  // cout << std::endl;
 }
 
  

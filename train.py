@@ -1,44 +1,95 @@
-from utils import *
+import os
+import sys
 from pathlib import Path
+from typing import Union
+
 import cv2
 import pandas as pd
-from torchvision import transforms, models
 import pytorch_lightning as pl
+import torch
+from matplotlib import pyplot as plt
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger  # type: ignore
-from pytorch_lightning.profilers import SimpleProfiler
-from pytorch_lightning import Trainer
-from torch.utils.data import Dataset, DataLoader
-import tempfile
-import torch
-import os
-from matplotlib import pyplot as plt
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from torch.utils.data import DataLoader, Dataset
+from torchvision import models, transforms
+
+import wandb
+import argparse
+from utils import *
+
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 ROOT_DIR = Path(__file__).parent
-MODELS_DIR = ROOT_DIR / 'wandb'
+WANDB_DIR = ROOT_DIR / 'wandb'
+DATA_DIR = ROOT_DIR / 'data'
+MODEL_DIR = ROOT_DIR / 'models'
 
 NAME = 'version_'
 versions = [int(i.name.split(NAME)[1])
-            for i in MODELS_DIR.glob(f'*{NAME}*')]
+            for i in WANDB_DIR.glob(f'*{NAME}*')]
 if versions == []:
-    new_version = 0
+    VERSION = 0
 else:
-    new_version = max(versions) + 1
+    VERSION = max(versions) + 1
 
 
 class EventDataset(Dataset):
-    def __init__(self, target_dir, transforms=None, n_samples=None):
+    """
+    Dataset that loads images and ring parameters from a directory.
+    The directory structure should be as follows:
+    target_dir
+    ├── X
+    │   ├── 0.png
+    │   ├── 1.png
+    │   ├── ...
+    ├── y
+    │   ├── 0.npy
+    │   ├── 1.npy
+    │   ├── ...
+
+    Args
+    ----
+        target_dir: Path
+            Path to the directory containing the images and ring parameters.
+        transforms: torchvision.transforms
+            Transforms to apply to the images.
+        n_samples: int
+            Number of samples to load from the directories. If None, all
+            samples are loaded.
+    """
+
+    def __init__(self, target_dir: Union[str, Path],
+                 transforms: Union[None, transforms.Compose] = None,
+                 n_samples: Union[int, None] = None):
         super(EventDataset, self).__init__()
         self.target_dir = Path(target_dir).absolute()
         self.transforms = transforms
 
+        # if n_samples is not specified, load all samples from the directory
         if n_samples is None:
             self.n_samples = len(list((self.target_dir / 'y').glob('*.npy')))
         else:
             self.n_samples = n_samples
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> tuple:
+        """
+        Load the image and ring parameters of the event at the given index.
+        Apply the transforms to the image if specified, convert the ring
+        parameters to a torch.Tensor and return the image and ring parameters.
+
+        Args
+        ----
+            index: int
+                Index of the sample to load.
+
+        Returns
+        -------
+            x: torch.Tensor
+                Image of the event.
+            y: torch.Tensor
+                Ring parameters of the event.
+        """
         X_dir = self.target_dir / 'X'
         y_dir = self.target_dir / 'y'
         x = cv2.imread(str(X_dir / f'{index}.png'), cv2.IMREAD_GRAYSCALE)
@@ -50,24 +101,89 @@ class EventDataset(Dataset):
 
         return x, y
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        Return the number of samples in the dataset.
+        """
         return self.n_samples
 
 
-class LitResNet18(pl.LightningModule):
-    def __init__(self, batch_size, dataset_sizes=None):
-        super(LitResNet18, self).__init__()
-        # define hyperparameters
-        # learning rate is only set for tracking purposes
-        # it will be overwritten by the scheduler
-        self.learning_rate = 0.1
+class EventDataModule(pl.LightningDataModule):
+    """
+    DataModule that loads the training, validation and test datasets.
+
+    Args
+    ----
+        batch_size: int
+            Batch size to use for the dataloaders.
+        dataset_sizes: tuple
+            Tuple containing the number of samples to load from the training,
+            validation and test datasets. If None, all samples are loaded.
+    """
+
+    def __init__(self, batch_size: int, dataset_sizes: Union[tuple, None] = None):
+        super(EventDataModule, self).__init__()
         self.batch_size = batch_size
         self.dataset_sizes = dataset_sizes
+        self.transforms = transforms.Compose([transforms.ToTensor()])
+        self.save_hyperparameters()
 
-        # define loss
-        self.loss = torch.nn.MSELoss()
+    def setup(self, stage: str):
+        """
+        Load the training, validation and test datasets. For testing there are
+        two datasets, one for toymodel data and one for simulated data.
+        """
+        trainsize, valsize, testsize = self.dataset_sizes if self.dataset_sizes else (
+            None, None, None)
 
-        # define model
+        self.trainset = EventDataset(DATA_DIR / 'train', n_samples=trainsize,
+                                     transforms=self.transforms)
+        self.valset = EventDataset(DATA_DIR / 'val', n_samples=valsize,
+                                   transforms=self.transforms)
+
+        # define two test sets, one for toymodel data and one for simulated data
+        self.dataset_names = ['test', 'sim_data']
+        self.testset_1 = EventDataset(DATA_DIR / self.dataset_names[0],
+                                      n_samples=testsize,
+                                      transforms=self.transforms)
+        self.testset_2 = EventDataset(DATA_DIR / self.dataset_names[1],
+                                      n_samples=None,
+                                      transforms=self.transforms)
+
+    def train_dataloader(self) -> DataLoader:
+        """
+        Return a DataLoader for the training dataset.
+        """
+        return DataLoader(self.trainset, batch_size=self.batch_size,
+                          shuffle=True, num_workers=4)
+
+    def val_dataloader(self) -> DataLoader:
+        """
+        Return a DataLoader for the validation dataset.
+        """
+        return DataLoader(self.valset, batch_size=self.batch_size,
+                          shuffle=False, num_workers=4)
+
+    def test_dataloader(self) -> list[DataLoader]:
+        """
+        Return a list of DataLoaders for the test datasets.
+        """
+        loader_1 = DataLoader(self.testset_1, batch_size=self.batch_size,
+                              shuffle=False, num_workers=4)
+        loader_2 = DataLoader(self.testset_2, batch_size=self.batch_size,
+                              shuffle=False, num_workers=4)
+        return [loader_1, loader_2]
+
+
+class ResNet18(torch.nn.Module):
+    """
+    Implementation of a ResNet18 model with a single channel input. The
+    last fully connected layer is replaced by a linear layer with 25
+    outputs. The output is reshaped to a 5x5 matrix.
+    """
+
+    def __init__(self):
+        super(ResNet18, self).__init__()
         self.resnet = models.resnet18(weights=None)
         # change the input channel to 1
         self.resnet.conv1 = torch.nn.Conv2d(
@@ -79,46 +195,56 @@ class LitResNet18(pl.LightningModule):
         x = x.view(-1, 5, 5)
         return x
 
-    def setup(self, stage=None):
-        # log hyperparameters
+
+class LitResNet18(pl.LightningModule):
+    """
+    LightningModule that defines the training, testing and validation behavior.
+
+    Args
+    ----
+        fit_gt: bool
+            If True, the logged samples images are fitted both with the
+            predicted and the ground truth ring parameters.
+    """
+
+    def __init__(self, fit_gt=False):
+        super(LitResNet18, self).__init__()
+        # define hyperparameters
+        # learning rate is only set for tracking purposes
+        # it will be overwritten by the scheduler
+        self.learning_rate = 0.1
+        self.fit_gt = fit_gt
+        self.dataset_names = ['test', 'sim_data']
+
+        # define model and loss
+        self.model = ResNet18()
+        self.loss = torch.nn.MSELoss()
+
+    def forward(self, x):
+        return self.model(x)
+    
+    def setup(self, stage):
         self.max_lr = self.learning_rate * 25
         self.save_hyperparameters({
-            'batch_size': self.batch_size,
             'initial_lr': self.learning_rate,
-            'max_lr': self.max_lr,
-            'dataset_sizes': self.dataset_sizes
+            'max_lr': self.max_lr
         })
-        # define datasets
-        if self.dataset_sizes is None:
-            trainsize, valsize, testsize = None, None, None
-        else:
-            trainsize = self.dataset_sizes[0]
-            valsize = self.dataset_sizes[1]
-            testsize = self.dataset_sizes[2]
-        self.trainset = EventDataset(ROOT_DIR / 'data' / 'train',
-                                     n_samples=trainsize,
-                                     transforms=transforms.ToTensor())
-        self.valset = EventDataset(ROOT_DIR / 'data' / 'val',
-                                   n_samples=valsize,
-                                   transforms=transforms.ToTensor())
 
-        # define testsets
-        self.dataset_names = ['test', 'sim_data']
-        self.testset_1 = EventDataset(ROOT_DIR / 'data' / self.dataset_names[0],
-                                      n_samples=testsize,
-                                      transforms=transforms.ToTensor())
-        self.testset_2 = EventDataset(ROOT_DIR / 'data' / self.dataset_names[1],
-                                      n_samples=None,
-                                      transforms=transforms.ToTensor())
 
     def training_step(self, batch, batch_idx):
+        """
+        Training step for a single batch.
+        """
         x, y = batch
         y_hat = self(x)
         loss = self.loss(y_hat, y)
-        self.log('train_loss', loss)
+        self.log('train_loss', loss, on_step=True, on_epoch=True)
         return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
+        """
+        Validation step for a single batch. 
+        """
         x, y = batch
         y_hat = self(x)
         loss = self.loss(y_hat, y)
@@ -126,26 +252,52 @@ class LitResNet18(pl.LightningModule):
         return {'val_loss': loss}
 
     def test_step(self, batch, batch_idx, dataloader_idx):
+        """
+        Test step for a single batch. The dataloader_idx is used to
+        determine which test dataset is used.
+
+        Here, not only the loss is logged, but also the model inference
+        on a few samples of the test dataset. The samples are logged
+        as images with ring fits.
+
+        Furthermore, the 5 worst predictions per batch are returned so
+        that they can be further processed in the test_epoch_end method.
+        """
         x, y = batch
         y_hat = self(x)
         loss = self.loss(y_hat, y)
 
         # log samples of the model inference
-        samples = [plot_single_event(img, pars)
-                   for img, pars in zip(x[:10], y_hat[:10])]
+        n_per_batch = 5  # number of samples to log per batch
+        if self.fit_gt:
+            samples = [plot_single_event(img, Y1=pars, Y2=ideal) for img, pars, ideal
+                       in zip(x[:n_per_batch], y_hat[:n_per_batch], y[:n_per_batch])]
+        else:
+            samples = [plot_single_event(img, Y1=pars) for img, pars
+                       in zip(x[:n_per_batch], y_hat[:n_per_batch])]
+
         self.logger.log_image(  # type: ignore
             key=f'Model inference on dataset: {self.dataset_names[dataloader_idx]}', images=samples)
 
         # log the 5 worst predictions per batch
+        n_worst_per_batch = 5
         losses = [self.loss(y_hat[i], y[i]) for i in range(len(y))]
         losses, indices = torch.sort(torch.stack(losses), descending=True)
 
-        worst = x[indices[:5]], y[indices[:5]], y_hat[indices[:5]]
+        worst = (x[indices[:n_worst_per_batch]],
+                 y[indices[:n_worst_per_batch]],
+                 y_hat[indices[:n_worst_per_batch]])
 
         self.log('test_loss', loss)
         return {'test_loss': loss, 'x': worst[0], 'y': worst[1], 'y_hat': worst[2]}
 
     def test_epoch_end(self, outputs):
+        """
+        Here, outputs contains the 5 worst predictions of each batch which were
+        accumulated in the test_step method. These will be used to log the
+        overall 50 worst predictions of the test dataset as images with ring
+        fits.
+        """
         for idx, name in enumerate(self.dataset_names):
             output = outputs[idx]
             x = torch.cat([out['x'] for out in output])  # type: ignore
@@ -157,44 +309,35 @@ class LitResNet18(pl.LightningModule):
 
             # log the worst predictions of the whole test set
             n_items = max(50, len(x))
-            worst_samples = [plot_single_event(img, pars)
-                             for img, pars in zip(x[:n_items], y_hat[:n_items])]
+            if self.fit_gt:
+                worst_samples = [plot_single_event(img, pars, ideal)
+                                 for img, pars, ideal in zip(x[:n_items], y_hat[:n_items], y[:n_items])]
+            else:
+                worst_samples = [plot_single_event(img, pars)
+                                 for img, pars in zip(x[:n_items], y_hat[:n_items])]
             self.logger.log_image(  # type: ignore
                 key=f'Worst predictions on dataset: {name}', images=worst_samples)
 
-            # create histograms of the parameters
-            y = y.cpu().numpy().reshape(-1, 25)
-            y_hat = y_hat.cpu().numpy().reshape(-1, 25)
-            df_y = pd.DataFrame(y).hist(bins=50, figsize=(10, 10))
-            df_y_hat = pd.DataFrame(y_hat).hist(bins=50, figsize=(10, 10))
-            with tempfile.NamedTemporaryFile(suffix='.png') as f:
-                plt.savefig(f.name)
-                # load the image with cv rgb
-                img = cv2.imread(f.name, cv2.IMREAD_COLOR)
-                self.logger.log_image(key=f'Ring parameters: {name}',  # type: ignore
-                                      images=[img])
-            with tempfile.NamedTemporaryFile(suffix='.png') as f:
-                plt.savefig(f.name)
-                img = cv2.imread(f.name, cv2.IMREAD_COLOR)
-                self.logger.log_image(key=f'Predicted ring: {name}',  # type: ignore
-                                      images=[img])
+            # TODO: log following data not only for worst predictions, but for all predictions
+            # create dataframes
+            df1 = pd.DataFrame(y.cpu().numpy().reshape(-1, 25))
+            df2 = pd.DataFrame(y_hat.cpu().numpy().reshape(-1, 25))
 
-    def train_dataloader(self):
-        return DataLoader(self.trainset, batch_size=self.batch_size,
-                          num_workers=12, shuffle=True)
+            fig = ring_params_hist(df1.to_numpy(), silent=True)
+            fig = ring_params_hist(df2.to_numpy(), silent=True)
 
-    def val_dataloader(self):
-        return DataLoader(self.valset, batch_size=self.batch_size,
-                          num_workers=12, shuffle=False)
-
-    def test_dataloader(self):
-        loader_1 = DataLoader(self.testset_1, batch_size=self.batch_size,  # type: ignore
-                              num_workers=12, shuffle=False)
-        loader_2 = DataLoader(self.testset_2, batch_size=self.batch_size,  # type: ignore
-                              num_workers=12, shuffle=False)
-        return [loader_1, loader_2]
+            wandb.log({f'Ring parameters on dataset: {name}': fig})
+            wandb.log({f'Predicted ring parameters on dataset: {name}': fig})
+            # log dataframes
+            wandb.log(
+                {f'Ring parameters on dataset: {name}': wandb.Table(dataframe=df1)})
+            wandb.log(
+                {f'Predicted ring parameters on dataset: {name}': wandb.Table(dataframe=df2)})
 
     def configure_optimizers(self):
+        """
+        Define a SGD optimizer with a OneCycleLR scheduler and return it.
+        """
         optimizer = torch.optim.SGD(
             self.parameters(),
             nesterov=True,
@@ -204,59 +347,75 @@ class LitResNet18(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(  # type: ignore
             optimizer,
             max_lr=self.max_lr,
-            three_phase=True,
+            three_phase=False,
             total_steps=self.trainer.estimated_stepping_batches
         )
+
         return [optimizer], [{'scheduler': scheduler, 'interval': 'step'}]
-
-
-def train():
-    # define model
-    model = LitResNet18(batch_size=batch_size, dataset_sizes=dataset_sizes)
-    lr_monitor = LearningRateMonitor(logging_interval='step')
-    trainer = Trainer(accelerator='gpu',
-                      devices=1,
-                      max_epochs=n_epochs,
-                      auto_lr_find=True,
-                      #   auto_scale_batch_size='binsearch',
-                      callbacks=[lr_monitor],
-                      logger=wandb_logger)
-    trainer.tune(model)
-
-    trainer.fit(model)
-    trainer.test(model)
-    model.to_onnx(ROOT_DIR / 'models' / f'{NAME}{new_version}' / 'model.onnx',
-                  input_sample=torch.randn(10, 1, 72, 32))
 
 
 if __name__ == '__main__':
     # define hyperparameters
-    batch_size = 100
+    batch_size = 200
     n_epochs = 3
-    dataset_sizes = (10000, 100, 100)
+    dataset_sizes = (10000, 1000, 1000)
     # dataset_sizes = (None, None, None)
-    # define logger
+
+    # parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--eval', action='store_true')
+    parser.add_argument('--version', type=int, default=None)
+    args = parser.parse_args()
+    evaluate = args.eval
+    version = args.version
+
+    if evaluate and version is not None:
+        try:
+            ckpt_path = list((MODEL_DIR / f'version_{version}' / 'checkpoints').glob('*.ckpt'))[0]
+            print(f'Using checkpoint {ckpt_path} for evaluation...')
+            VERSION = version
+        except IndexError:
+            print(f'ValueError: No checkpoint found in {MODEL_DIR} for version {version}. Exiting...')
+            sys.exit(1)
+    elif evaluate and version is None:
+        ckpt_path = list((MODEL_DIR / 'latest' / 'checkpoints').glob('*.ckpt'))[0]
+        print(f'Using checkpoint {ckpt_path} for evaluation...')
+
+    # define model and datamodule
+    model = LitResNet18() if not evaluate else LitResNet18.load_from_checkpoint(ckpt_path,
+                                                                        batch_size=batch_size,
+                                                                        dataset_sizes=dataset_sizes,
+                                                                        fit_gt=True)
+    dm = EventDataModule(batch_size=batch_size, dataset_sizes=dataset_sizes)
+
+    # define logger, callbacks and trainer
     wandb_logger = WandbLogger(
         project='models',
         save_dir=ROOT_DIR,
-        id=f'{NAME}{new_version}',
-        name=f'{NAME}{new_version}',
+        id=f'{NAME}{VERSION}',
+        name=f'{NAME}{VERSION}',
         log_model=True
     )
-    # simple_profiler = SimpleProfiler()
-
-    train()
-
-    # load model
-    # model = LitResNet18.load_from_checkpoint(
-    #     'models/testversion3/checkpoints/epoch=2-step=300.ckpt',
-    #     batch_size=batch_size,
-    #     dataset_sizes=dataset_sizes)
-
-    # trainer = Trainer(accelerator='gpu', devices=1,
-    #                   max_epochs=n_epochs,
-    #                   logger=wandb_logger,
-    #                   #   profiler=simple_profiler,
-    #                   )
-
-    # trainer.test(model)
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+    trainer = Trainer(accelerator='gpu',
+                      devices=1,
+                      max_epochs=n_epochs,
+                      auto_lr_find=not evaluate,
+                      #   auto_scale_batch_size='binsearch',
+                      callbacks=[lr_monitor],
+                      logger=wandb_logger)
+    
+    # train model
+    if not evaluate:
+        trainer.tune(model, datamodule=dm)
+        trainer.fit(model, datamodule=dm)
+        model.to_onnx(MODEL_DIR / f'{NAME}{VERSION}' / 'model.onnx',
+                  input_sample=torch.randn(10, 1, 72, 32))
+        # create symbolic link to latest model
+        source_path = MODEL_DIR / f'version_{VERSION}'
+        link_path = MODEL_DIR / 'latest'
+        if link_path.exists():
+            link_path.unlink()
+        link_path.symlink_to(source_path)
+    # evaluate model
+    trainer.test(model, datamodule=dm)

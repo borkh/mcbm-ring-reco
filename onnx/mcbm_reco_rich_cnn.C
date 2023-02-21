@@ -22,7 +22,7 @@ R__LOAD_LIBRARY(/home/robin/fair_install/FairSoftInst/lib/libonnxruntime.so)
 #include<cstdlib>
 
 
-void mcbm_reco_rich_cnn(Int_t nEvents = 1000,
+void mcbm_reco_rich_cnn(Int_t nEvents = 10000,
 			 TString dataset = "data/runx",
 			 const char* setupName = "mcbm_beam_2020_03",
 			 bool timebased = false)
@@ -142,7 +142,7 @@ void mcbm_reco_rich_cnn(Int_t nEvents = 1000,
     // }
     CbmRichReconstruction* richReco = new CbmRichReconstruction();
     richReco->UseMCbmSetup();
-    //richReco->SetFinderName("ideal");
+    // richReco->SetFinderName("hough");
     run->AddTask(richReco);
     std::cout << "-I- richReco: Added task " << richReco->GetName() << std::endl;
   }
