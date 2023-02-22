@@ -38,19 +38,19 @@ private:
 };
 
 InitStatus QA::Init(){
-  const int num_threads = 4;
-  // OrtThreadingOptions* tp_options = Ort::ThreadingOptions::Create(num_threads);
-  // tp_options->SetGlobalIntraOpNumThreads(2);
+  const int num_threads = 1;
 
+  // Ort::SessionOptions session_options = Ort::SessionOptions(nullptr);
   Ort::SessionOptions session_options;
-  session_options.SetIntraOpNumThreads(1);
   session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
   session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
-  session_options.SetInterOpNumThreads(12);
+  session_options.SetIntraOpNumThreads(4);
+  session_options.SetInterOpNumThreads(1);
 
 
   env = new Ort::Env{OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ring_finder"};
   session = new Ort::Session(*env, "../models/model.onnx", session_options);
+  // session = new Ort::Session(*env, "olive_opt_result/optimized_model.onnx", session_options);
 
 
   std::cout << "QA Init called !" << std::endl;

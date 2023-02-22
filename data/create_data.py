@@ -1,23 +1,20 @@
+import argparse
 import os
 import sys
 from pathlib import Path
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # nopep8
-
-import argparse
 
 import numpy as np
 from numpy.random import choice
 from sklearn.datasets import make_circles
 from sklearn.preprocessing import normalize
-from tqdm import tqdm
 from torchvision import transforms
+from tqdm import tqdm
 
 ROOT_DIR = Path(__file__).parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from utils import *  # nopep8
 from train import *  # nopep8
+from utils import *  # nopep8
 
 
 class Display(np.ndarray):
@@ -473,10 +470,13 @@ if __name__ == "__main__":
         # load sample images and labels to verify correctness of the dataset
         # only load the train dataset
         target_dir = ROOT_DIR / 'data' / 'train'
-        transforms = transforms.Compose([transforms.ToTensor()]) # type: ignore
+        transforms = transforms.Compose([transforms.ToTensor()])  # type: ignore
         ds = EventDataset(target_dir, n_samples=200, transforms=transforms)
         dl = DataLoader(ds, batch_size=200, shuffle=True)
         X, y = next(iter(dl))
 
         # display_images(X)
         fit_rings(X, y, title=f'Sample images', silent=silent)
+
+    # create simulation dataset in `data/sim_data`
+    load_sim_data()

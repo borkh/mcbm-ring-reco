@@ -1,14 +1,11 @@
-import os
 import cv2
 import numpy as np
 import pandas as pd
 import torch
 import time
-from sklearn.preprocessing import normalize
 import plotly.express as px
 import plotly.graph_objs as go
 import plotly.subplots as sp
-import plotly.io as pio
 import sys
 from pathlib import Path
 
@@ -16,9 +13,9 @@ np.set_printoptions(threshold=sys.maxsize)
 
 ROOT_DIR = Path(__file__).parent
 # pio.templates.default = 'presentation'
-fig_width = 700
-fig_height = 250
-margins = dict(l=90, r=5, t=5, b=65)
+# fig_width = 700
+# fig_height = 250
+# margins = dict(l=90, r=5, t=5, b=65)
 
 
 def measure_time(func):
@@ -30,18 +27,9 @@ def measure_time(func):
         t = time.time()
         result = func(*args)
         t = time.time() - t
-        return result, t
+        print(f'Function "{func.__name__}" took {t:.2f} seconds to run.')
+        return result
     return wrapper
-
-
-@measure_time
-def predict(model, X):
-    return model.predict(X)
-
-
-@measure_time
-def evaluate(model, data_generator):
-    return model.evaluate(data_generator)
 
 
 def plot_single_event(image, Y1=None, Y2=None, Y3=None,
@@ -92,9 +80,12 @@ def plot_single_event(image, Y1=None, Y2=None, Y3=None,
     return image
 
 
-def load_sim_data(create_dataset=False) -> tuple[np.ndarray, pd.DataFrame]:
+def load_sim_data() -> None:
     """
-    Load simulation data from a csv files.
+    This function loads simulation data from a csv file, filters the data based
+    on the filters below, sorts the order of the rings in the data, and creates
+    a dataset of images and labels in the same format as the toymodel datasets
+    `data/train`, `data/val`, and `data/test`.
 
     This function filters events in a dataset based on the following criteria:
     - Removing events with NaN (Not a Number) in any of the parameters
@@ -106,16 +97,6 @@ def load_sim_data(create_dataset=False) -> tuple[np.ndarray, pd.DataFrame]:
     - Removing events where the radius of the first ring is greater than 20
     - Repeating the above steps for the second through fifth rings
       (x-coordinate, y-coordinate, radius).
-
-    Parameters
-    ----------
-    y : numpy array
-        A 2D array of shape (n_events, n_parameters) containing the parameters
-        for each event. The parameters represent the x-coordinate, y-coordinate,
-        semi-major axis, semi-minor axis, and rotation angle of ellipses.
-
-    Returns
-    -------
     """
     # img_dir = ROOT_DIR / 'data' / 'sim_data' / 'X'
     df = pd.read_csv(ROOT_DIR / 'data' / 'sim_data' /
@@ -146,21 +127,44 @@ def load_sim_data(create_dataset=False) -> tuple[np.ndarray, pd.DataFrame]:
     # get ideal hough parameters only
     y = df.iloc[:, :25].to_numpy().reshape(-1, 5, 5)
 
-    if create_dataset:
-        target_X = ROOT_DIR / 'data' / 'sim_data' / 'X'
-        target_y = ROOT_DIR / 'data' / 'sim_data' / 'y'
+    for i in range(5):
+        # add indices to df with dtype int
+        df[f'indices{i}'] = df[f'x{i}'].astype(
+            int) + df[f'y{i}'].astype(int) * 32
 
-        print(f'Creating dataset in {target_X} and {target_y}...')
-        for i, (x, y) in enumerate(zip(X, y)):
-            im_path = target_X / f'{i}.png'
-            label_path = target_y / f'{i}.npy'
-            cv2.imwrite(str(im_path), 255*x)
-            np.save(str(label_path), y)
+    # check where indices0 is bigger than indices1 and x0 is not 0
+    df['check'] = np.where((df['indices0'] > df['indices1']) &
+                           (df['x1'] != 0), 1, 0)
+    # swap first five columns with second five columns if check is 1
+    tmp = df.loc[df['check'] == 1, df.columns[:5]].values  # type: ignore
+    df.loc[df['check'] == 1, df.columns[:5]
+           ] = df.loc[df['check'] == 1, df.columns[5:10]].values  # type: ignore
+    df.loc[df['check'] == 1, df.columns[5:10]] = tmp
 
-    return X, df
+    # add indices to df in order to check if they are in the correct order
+    for i in range(5):
+        df[f'indices{i}'] = df[f'x{i}'].astype(
+            int) + df[f'y{i}'].astype(int) * 32
+    df['check'] = np.where((df['indices0'] > df['indices1']) &
+                           (df['x1'] != 0), 1, 0)
+
+    # drop check and indices columns
+    df = df.drop(columns=['check', 'indices0', 'indices1', 'indices2',
+                          'indices3', 'indices4'])
+
+    # create dataset in data/sim_data
+    target_X = ROOT_DIR / 'data' / 'sim_data' / 'X'
+    target_y = ROOT_DIR / 'data' / 'sim_data' / 'y'
+    print(f'Creating dataset in {target_X} and {target_y}...')
+
+    for i, (x, y) in enumerate(zip(X, y)):
+        im_path = target_X / f'{i}.png'
+        label_path = target_y / f'{i}.npy'
+        cv2.imwrite(str(im_path), 255*x)
+        np.save(str(label_path), y)
 
 
-def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silent=False):
+def ring_params_hist(y, silent=False):
     """
     This function creates a pd.DataFrame from the ring parameters and plots
     histograms of each parameter. These might be useful for visualizing the
@@ -210,20 +214,16 @@ def ring_params_hist(y, plot_dir=None, title='Ring Parameters Histograms', silen
     fig.add_trace(go.Histogram(x=df['n_rings'],
                   histnorm='probability'), row=5, col=1)
 
-    fig.update_layout(title=title, width=1000,
-                      modebar_add=["toggleSpikelines"])
+    fig.update_layout(width=1000, modebar_add=["toggleSpikelines"],
+                      margin=dict(l=0.2, r=0.2, t=50.0, b=0.2))
 
-    if plot_dir is not None:
-        plot_path = plot_dir / f'{title}.html'
-        print(f'Saving plot to {plot_path}...')
-        pio.write_html(fig, plot_path, auto_open=not silent)
-    elif not silent:
+    if not silent:
         fig.show()
 
     return fig
 
 
-def display_images(imgs: np.ndarray, plot_dir=None, col_width: int = 5, title="", silent=False) -> np.ndarray:
+def display_images(imgs: np.ndarray, col_width: int = 5, title="", silent=False) -> np.ndarray:
     """
     Display a set of images in a grid.
     Parameters
@@ -242,10 +242,7 @@ def display_images(imgs: np.ndarray, plot_dir=None, col_width: int = 5, title=""
         imgs = imgs.reshape(
             imgs.shape[0] // col_width, col_width, *imgs.shape[1:])
         fig = px.imshow(imgs, animation_frame=0, facet_col=1, title=title)
-        if plot_dir is not None:
-            plot_path = plot_dir / f'{title}.html'
-            pio.write_html(fig, plot_path, auto_open=not silent)
-        elif not silent:
+        if not silent:
             fig.show()
     except ValueError as e:
         print(f'\nError: {e}')
@@ -254,7 +251,7 @@ def display_images(imgs: np.ndarray, plot_dir=None, col_width: int = 5, title=""
         return imgs
 
 
-def fit_rings(images, params, plot_dir=None, title="", silent=False) -> np.ndarray:
+def fit_rings(images, params, title="", silent=False) -> np.ndarray:
     """
     Uses the `plot_single_event` function to fit rings to a set of images
     with the given parameters. The resulting images are then displayed in a
@@ -277,4 +274,4 @@ def fit_rings(images, params, plot_dir=None, title="", silent=False) -> np.ndarr
         images = np.repeat(images, 3, axis=-1)
     ring_fits = np.array([plot_single_event(x, y)
                           for x, y in zip(images, params)])
-    return display_images(ring_fits, plot_dir, title=title, silent=silent)
+    return display_images(ring_fits, title=title, silent=silent)

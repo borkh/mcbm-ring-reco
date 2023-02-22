@@ -1,13 +1,12 @@
-import os
+import argparse
 import sys
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
 import cv2
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-from matplotlib import pyplot as plt
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger  # type: ignore
@@ -15,10 +14,8 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import models, transforms
 
 import wandb
-import argparse
 from utils import *
 
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 ROOT_DIR = Path(__file__).parent
 WANDB_DIR = ROOT_DIR / 'wandb'
@@ -60,8 +57,8 @@ class EventDataset(Dataset):
     """
 
     def __init__(self, target_dir: Union[str, Path],
-                 transforms: Union[None, transforms.Compose] = None,
-                 n_samples: Union[int, None] = None):
+                 transforms: Optional[transforms.Compose] = None,
+                 n_samples: Optional[int] = None):
         super(EventDataset, self).__init__()
         self.target_dir = Path(target_dir).absolute()
         self.transforms = transforms
@@ -121,7 +118,7 @@ class EventDataModule(pl.LightningDataModule):
             validation and test datasets. If None, all samples are loaded.
     """
 
-    def __init__(self, batch_size: int, dataset_sizes: Union[tuple, None] = None):
+    def __init__(self, batch_size: int, dataset_sizes: Optional[tuple] = None):
         super(EventDataModule, self).__init__()
         self.batch_size = batch_size
         self.dataset_sizes = dataset_sizes
@@ -204,7 +201,7 @@ class LitResNet18(pl.LightningModule):
     ----
         fit_gt: bool
             If True, the logged samples images are fitted both with the
-            predicted and the ground truth ring parameters.
+            predicted as well as the ground truth ring parameters.
     """
 
     def __init__(self, fit_gt=False):
@@ -222,14 +219,13 @@ class LitResNet18(pl.LightningModule):
 
     def forward(self, x):
         return self.model(x)
-    
+
     def setup(self, stage):
         self.max_lr = self.learning_rate * 25
         self.save_hyperparameters({
             'initial_lr': self.learning_rate,
             'max_lr': self.max_lr
         })
-
 
     def training_step(self, batch, batch_idx):
         """
@@ -268,7 +264,7 @@ class LitResNet18(pl.LightningModule):
         loss = self.loss(y_hat, y)
 
         # log samples of the model inference
-        n_per_batch = 5  # number of samples to log per batch
+        n_per_batch = 10  # number of samples to log per batch
         if self.fit_gt:
             samples = [plot_single_event(img, Y1=pars, Y2=ideal) for img, pars, ideal
                        in zip(x[:n_per_batch], y_hat[:n_per_batch], y[:n_per_batch])]
@@ -307,7 +303,7 @@ class LitResNet18(pl.LightningModule):
             losses = [self.loss(y_hat[i], y[i]) for i in range(len(y))]
             losses, indices = torch.sort(torch.stack(losses), descending=True)
 
-            # log the worst predictions of the whole test set
+            # log the worst 50 predictions of the whole test set
             n_items = max(50, len(x))
             if self.fit_gt:
                 worst_samples = [plot_single_event(img, pars, ideal)
@@ -318,8 +314,7 @@ class LitResNet18(pl.LightningModule):
             self.logger.log_image(  # type: ignore
                 key=f'Worst predictions on dataset: {name}', images=worst_samples)
 
-            # TODO: log following data not only for worst predictions, but for all predictions
-            # create dataframes
+            # create dataframes for worst predictions
             df1 = pd.DataFrame(y.cpu().numpy().reshape(-1, 25))
             df2 = pd.DataFrame(y_hat.cpu().numpy().reshape(-1, 25))
 
@@ -356,10 +351,10 @@ class LitResNet18(pl.LightningModule):
 
 if __name__ == '__main__':
     # define hyperparameters
-    batch_size = 200
-    n_epochs = 3
-    dataset_sizes = (10000, 1000, 1000)
-    # dataset_sizes = (None, None, None)
+    batch_size = 2000
+    n_epochs = 20
+    # dataset_sizes = (1000, None, None)
+    dataset_sizes = (None, None, None)
 
     # parse command line arguments
     parser = argparse.ArgumentParser()
@@ -371,21 +366,24 @@ if __name__ == '__main__':
 
     if evaluate and version is not None:
         try:
-            ckpt_path = list((MODEL_DIR / f'version_{version}' / 'checkpoints').glob('*.ckpt'))[0]
+            ckpt_path = list(
+                (MODEL_DIR / f'version_{version}' / 'checkpoints').glob('*.ckpt'))[0]
             print(f'Using checkpoint {ckpt_path} for evaluation...')
             VERSION = version
         except IndexError:
-            print(f'ValueError: No checkpoint found in {MODEL_DIR} for version {version}. Exiting...')
+            print(
+                f'ValueError: No checkpoint found in {MODEL_DIR} for version {version}. Exiting...')
             sys.exit(1)
     elif evaluate and version is None:
-        ckpt_path = list((MODEL_DIR / 'latest' / 'checkpoints').glob('*.ckpt'))[0]
+        ckpt_path = list(
+            (MODEL_DIR / 'latest' / 'checkpoints').glob('*.ckpt'))[0]
         print(f'Using checkpoint {ckpt_path} for evaluation...')
 
     # define model and datamodule
-    model = LitResNet18() if not evaluate else LitResNet18.load_from_checkpoint(ckpt_path,
-                                                                        batch_size=batch_size,
-                                                                        dataset_sizes=dataset_sizes,
-                                                                        fit_gt=True)
+    model = LitResNet18() if not evaluate else LitResNet18.load_from_checkpoint(ckpt_path,  # type: ignore
+                                                                                batch_size=batch_size,
+                                                                                dataset_sizes=dataset_sizes,
+                                                                                fit_gt=True)
     dm = EventDataModule(batch_size=batch_size, dataset_sizes=dataset_sizes)
 
     # define logger, callbacks and trainer
@@ -404,18 +402,23 @@ if __name__ == '__main__':
                       #   auto_scale_batch_size='binsearch',
                       callbacks=[lr_monitor],
                       logger=wandb_logger)
-    
+
     # train model
     if not evaluate:
         trainer.tune(model, datamodule=dm)
         trainer.fit(model, datamodule=dm)
         model.to_onnx(MODEL_DIR / f'{NAME}{VERSION}' / 'model.onnx',
-                  input_sample=torch.randn(10, 1, 72, 32))
+                      input_sample=torch.randn(10, 1, 72, 32))
         # create symbolic link to latest model
         source_path = MODEL_DIR / f'version_{VERSION}'
         link_path = MODEL_DIR / 'latest'
         if link_path.exists():
             link_path.unlink()
         link_path.symlink_to(source_path)
+
     # evaluate model
+    print('Evaluating model...')
+    t = time.time()
     trainer.test(model, datamodule=dm)
+    t = time.time() - t
+    print(f'Testing took {t:.2f} seconds to run.')
