@@ -91,7 +91,7 @@ create one here: https://wandb.ai/site.  Then, follow the steps below:
    ```
    python train.py
    ``` 
-   The hyperparameters used for training are specified `hyperparameters.py`.
+   The hyperparameters used for training are specified in `hyperparameters.yml`.
    The learning rate is not specified in this file, as the `LR range test` is
    used to find the optimal learning rate. The resulting learning rate is then
    used for the SGD optimizer together with the `1cycle` policy. For more
