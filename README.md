@@ -10,6 +10,34 @@ detector (72x32 pixels). The output of the CNN contains the ring parameters:
 ring center (x,y) and radius (r). The model is trained using the PyTorch
 Lightning framework.
 
+## File Description
+
+* `data/create_data.py`: Creates training, testing and validation data from
+  a toymodel. This data includes images that look like events on the mRICH
+  detector with up to five rings as well as the labels --- i.e. ring parameters
+  --- for these images. The data is saved in the specified directory (e.g.
+  --`data/train`). This directory contains two subdirectories: `X` and `y`. The
+   `X` directory contains the images and the `y` directory contains the labels.
+  The images are stored in `.png` format and the ring parameters are stored in
+  5x5 numpy arrays. Each row of the array contains the ring parameters for one
+  ring in the following format:
+  ``` [center_x, center_y, semi major axis, semi minor axis, angle] ```
+  For now, only perfect rings (not ellipses) are created -> semi major axis and
+  semi minor axis are equal and the angle is zero. E.g.:
+  ``` [23, 42, 4, 4, 0] ```
+* `hyperparameters.yml`: Contains the hyperparameters used for training the
+  model.
+* `train.py`: This script trains and evaluates a model using the data created by
+  `data/create_data.py`. The script defines how the data is loaded with the
+  `EventDataset` and `EventDataModule` classes. The model and the
+  training/validation/testing loops are defined in the `TorchModel` and 
+  `LitModel` classes.
+* `utils/utils.py`: Contains a variety of utility functions used in the
+  project, including functions for visualizing data, fitting ellipses to the
+  images, creating histograms and measuring the execution time of other
+  functions.
+* `onnx`: Contains scripts to run the ONNX model with the CbmRoot framework.
+
 ## Installation
 
 To get started, install Anaconda/Miniconda, git and the appropriate versions of
@@ -28,9 +56,7 @@ create one here: https://wandb.ai/site.  Then, follow the steps below:
    conda env create -f environment.yml
    ```
 
-## Usage
-
-### Creating the datasets
+## Creating the datasets
    Before training the model, the training, testing and validation data needs to
    be created. This can be done by running the following command:
    ```
@@ -51,10 +77,10 @@ create one here: https://wandb.ai/site.  Then, follow the steps below:
    Optionally, the `--append` flag can be set to append the data to existing
    files. Otherwise, the existing files will be overwritten. Set `--force` to
    overwrite the existing files without asking for confirmation. By default,
-   the data is visualized after creation. Set the `--silent` flag to only save
-   the plots without showing them.
+   the data is visualized after creation. Set the `--silent` flag to disable
+   this.
 
-### Training the model
+## Training the model
    For a complete training and evaluation run, run the following command:
    ```
    python train.py
@@ -89,31 +115,3 @@ create one here: https://wandb.ai/site.  Then, follow the steps below:
    ```
    Where `<VERSION>` is the version number of the model you want to evaluate, e.g.
    `12` for `version_12`. The model will be loaded from the `models` directory.
-
-## File Description
-
-* `data/create_data.py`: Creates training, testing and validation data from
-  a toymodel. This data includes images that look like events on the mRICH
-  detector with up to five rings as well as the labels --- i.e. ring parameters
-  --- for these images. The data is saved in the specified directory (e.g.
-  --`data/train`). This directory contains two subdirectories: `X` and `y`. The
-   `X` directory contains the images and the `y` directory contains the labels.
-  The images are stored in `.png` format and the ring parameters are stored in
-  5x5 numpy arrays. Each row of the array contains the ring parameters for one
-  ring in the following format:
-  ``` [center_x, center_y, semi major axis, semi minor axis, angle] ```
-  For now, only perfect rings (not ellipses) are created -> semi major axis and
-  semi minor axis are equal and the angle is zero. E.g.:
-  ``` [23, 42, 4, 4, 0] ```
-* `hyperparameters.yml`: Contains the hyperparameters used for training the
-  model.
-* `train.py`: This script trains and evaluates a model using the data created by
-  `data/create_data.py`. The script defines how the data is loaded with the
-  `EventDataset` and `EventDataModule` classes. The model and the
-  training/validation/testing loops are defined in the `TorchModel` and 
-  `LitModel` classes.
-* `utils/utils.py`: Contains a variety of utility functions used in the
-  project, including functions for visualizing data, fitting ellipses to the
-  images, creating histograms and measuring the execution time of other
-  functions.
-* `onnx`: Contains scripts to run the ONNX model with the CbmRoot framework.
