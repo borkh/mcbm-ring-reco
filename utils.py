@@ -9,14 +9,7 @@ import plotly.subplots as sp
 import sys
 from pathlib import Path
 
-np.set_printoptions(threshold=sys.maxsize)
-
 ROOT_DIR = Path(__file__).parent
-# pio.templates.default = 'presentation'
-# fig_width = 700
-# fig_height = 250
-# margins = dict(l=90, r=5, t=5, b=65)
-
 
 def measure_time(func):
     """
@@ -75,7 +68,7 @@ def plot_single_event(image, Y1=None, Y2=None, Y3=None,
                                         (ring[2], ring[3]),
                                         0, 0, 360, color, 2)
                 except cv2.error as e:
-                    print(e, f': {ring}')
+                    print(e, f"Can't draw ellipse with following parameters: {ring}")
 
     return image
 
@@ -164,7 +157,7 @@ def load_sim_data() -> None:
         np.save(str(label_path), y)
 
 
-def ring_params_hist(y, silent=False):
+def ring_params_hist(y: np.ndarray, silent: bool = False) -> None:
     """
     This function creates a pd.DataFrame from the ring parameters and plots
     histograms of each parameter. These might be useful for visualizing the
@@ -223,7 +216,7 @@ def ring_params_hist(y, silent=False):
     return fig
 
 
-def display_images(imgs: np.ndarray, col_width: int = 5, title="", silent=False) -> np.ndarray:
+def display_images(imgs: np.ndarray, col_width: int = 5, title: string = "", silent: bool = False) -> np.ndarray:
     """
     Display a set of images in a grid.
     Parameters

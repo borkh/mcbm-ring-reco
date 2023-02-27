@@ -1,8 +1,8 @@
-#ifndef CBM_QA_EVENTBASED
+#ifndef CBM_QA_EVENTBASED_HOUGH
 #include<fstream>
 #include<iostream>
 #include<tuple>
-#define CBM_QA_EVENTBASED
+#define CBM_QA_EVENTBASED_HOUGH
 
 
 class QA : public FairTask{
@@ -112,35 +112,35 @@ void QA::Exec(Option_t* /*option*/) {
 	for (int i = 0; i < n_pixels; i++) {
 		// write 0 unless i is in indices
 		if (std::find(indices.begin(), indices.end(), i) != indices.end()) {
-				// cout << 1;
+				cout << 1;
 		}
 		else {
-				// cout << 0;
+				cout << 0;
 		}
 		if (i < n_pixels - 1) {
-				// cout << ",";
+				cout << ",";
 		}
 	}
-	// cout << std::endl;
+	cout << std::endl;
 
 	int max_rings = 5;
 	for (int i = 0; i < max_rings; i++) {
 		if (i < fRichRings->GetEntriesFast()) {
 			CbmRichRing* ring = static_cast<CbmRichRing*>(fRichRings->At(i));
-			// cout << getCenterXPixel(ring) - 0.5 << "," <<
-				// getCenterYPixel(ring) - 0.5 << "," <<
-				// ring->GetRadius()*32./21.2 << "," <<
-				// ring->GetRadius()*32./21.2 << ",0";
+			cout << getCenterXPixel(ring) - 0.5 << "," <<
+				getCenterYPixel(ring) - 0.5 << "," <<
+				ring->GetRadius()*32./21.2 << "," <<
+				ring->GetRadius()*32./21.2 << ",0";
 		}
 		else {
-			// cout << "0,0,0,0,0";
+			cout << "0,0,0,0,0";
 		}
 
 		if (i < max_rings - 1) {
-			// cout << ",";
+			cout << ",";
 		}
 	}
-	// cout << std::endl;
+	cout << std::endl;
 
 	
 }

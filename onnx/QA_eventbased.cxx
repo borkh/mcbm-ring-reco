@@ -5,11 +5,6 @@
 #include<thread>
 #define CBM_QA_EVENTBASED
 
-// OrtThreadingOptions* tp_options;
-// // Ort::ThrowOnError(Ort::GetApi().CreateThreadingOptions(&tp_options));
-
-// tp_options->SetGlobalIntraOpNumThreads(2);
-
 
 class QA : public FairTask{
 	virtual InitStatus Init();
@@ -40,18 +35,14 @@ private:
 InitStatus QA::Init(){
   const int num_threads = 1;
 
-  // Ort::SessionOptions session_options = Ort::SessionOptions(nullptr);
   Ort::SessionOptions session_options;
   session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
   session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
   session_options.SetIntraOpNumThreads(4);
   session_options.SetInterOpNumThreads(1);
 
-
   env = new Ort::Env{OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, "ring_finder"};
   session = new Ort::Session(*env, "../models/model.onnx", session_options);
-  // session = new Ort::Session(*env, "olive_opt_result/optimized_model.onnx", session_options);
-
 
   std::cout << "QA Init called !" << std::endl;
   FairRootManager* manager = FairRootManager::Instance();
@@ -112,17 +103,17 @@ void QA::Exec(Option_t* /*option*/) {
       // write 0 unless i is in indices
       if (std::find(indices.begin(), indices.end(), i) != indices.end()) {
               input_batch[i] = 1;
-              // cout << 1;
+              cout << 1;
       }
       else {
               input_batch[i] = 0;
-              // cout << 0;
+              cout << 0;
       }
       if (i < n_pixels - 1) {
-              // cout << ",";
+              cout << ",";
       }
   }
-  // cout << std::endl;
+  cout << std::endl;
 
   const char* input_names[] = {"input_1"};
   const char* output_names[] = {"reshape"};
@@ -140,12 +131,12 @@ void QA::Exec(Option_t* /*option*/) {
   float* intarr = output_tensor.front().GetTensorMutableData<float>();
   vector<float> output_tensor_values {intarr, intarr + bs * n_rings * n_params};
   for(int i{}; i < output_tensor_values.size(); i++) {
-      // cout << output_tensor_values[i];
+      cout << output_tensor_values[i];
       if (i < output_tensor_values.size() - 1) {
-              // cout << ",";
+              cout << ",";
       }
   }
-  // cout << std::endl;
+  cout << std::endl;
 }
 
  

@@ -208,23 +208,23 @@ class Display(np.ndarray):
 
     def add_ellipses(self, nof_rings: int, hits_per_ring: tuple, nof_noise_hits: int = 0) -> None:
         """
-        Add a specified number of ellipses with random parameters to the display object.
+        Add a specified number of ellipses with random parameters to the display
+        object.
 
-        The ellipses are added to the display by calling the `_add_ellipse` method. The horizontal and vertical shifts of
-        the center of the ellipse, the radius, and the amount of noise are all randomly generated. The number of hits is
-        determined by sampling from a uniform distribution between `min_ring_hits` and `max_ring_hits`.
+        The ellipses are added to the display by calling the `_add_ellipse`
+        method. The horizontal and vertical shifts of the center of the ellipse,
+        the radius, and the amount of noise are all randomly generated. The
+        number of hits is determined by sampling from a uniform distribution
+        between `min_ring_hits` and `max_ring_hits`.
 
         Parameters:
             nof_rings (int): The number of ellipses to add to the display.
             hits_per_ring (tuple): A tuple of two integers representing the
-                minimum and maximum number of hits to add to each ellipse.
-                Keep in mind that the number of hits is scaled based on the
-                radius of the ellipse in `_add_ellipse`. Thus, hits_per_ring
-                does not represent the exact number of hits that will be added
-                to each ellipse.
-
-        Returns:
-            None
+                minimum and maximum number of hits to add to each ellipse.  Keep
+                in mind that the number of hits is scaled based on the radius of
+                the ellipse in `_add_ellipse`. Thus, hits_per_ring does not
+                represent the exact number of hits that will be added to each
+                ellipse.
         """
         indices = self._get_indices(nof_rings)
         self.nof_rings = nof_rings
@@ -259,7 +259,10 @@ def delete_files_by_extension(directory, extension):
         file.unlink()
 
 
-def add_to_dataset(target_dir: Path, n: int, append: bool = True) -> None:
+def add_to_dataset(target_dir: Path, n: int, append: bool = True, min_hits: int = 10,
+                    max_hits: int = 20, min_rings: int = 1, max_rings: int = 4,
+                    min_noise_hits: int = 0, max_noise_hits: int = 0,
+                    input_shape: tuple = (72, 32, 1), dist: list = None) -> None:
     """
     Adds event display images and corresponding labels to a dataset.
 
@@ -269,11 +272,6 @@ def add_to_dataset(target_dir: Path, n: int, append: bool = True) -> None:
     parameters of the ellipses. The dataset is used to train a convolutional
     neural network to reconstruct the parameters of the ellipses from the event
     display images.
-
-    The event displays have a fixed input shape of (72, 32, 1), and the number
-    of rings in the event displays is chosen randomly from the range [0, 4]. The
-    number of hits in each ring is chosen randomly from the range [8, 17], and
-    the number of noise hits is chosen randomly from the range [0, 9].
 
     The generated event displays and labels are saved as image files (.png) and
     numpy arrays (.npy), respectively. These files are saved in the specified
@@ -290,13 +288,26 @@ def add_to_dataset(target_dir: Path, n: int, append: bool = True) -> None:
             If True, append the generated event displays and labels to an
             existing dataset. If False, delete the existing dataset and create a
             new one.
+        min_hits: int
+            The minimum number of hits to add to each ellipse.
+        max_hits: int
+            The maximum number of hits to add to each ellipse.
+        min_rings: int
+            The minimum number of ellipses to add to the display.
+        max_rings: int
+            The maximum number of ellipses to add to the display.
+        min_noise_hits: int
+            The minimum number of noise hits to add to the display.
+        max_noise_hits: int
+            The maximum number of noise hits to add to the display.
+        input_shape: tuple
+            The shape of the event display images. Format: (height, width,
+            channels).
+        dist: list
+            List of distributions to use for the number of rings. Should be
+            normalized to 1. If None, the number of rings is sampled from a
+            uniform distribution.
     """
-
-    input_shape = (72, 32, 1)
-    minhits, maxhits = 8, 17
-    minrings, maxrings = 0, 4
-    min_noise_hits, max_noise_hits = 0, 7
-
     target_dir_X = target_dir / 'X'
     target_dir_y = target_dir / 'y'
 
@@ -326,14 +337,9 @@ def add_to_dataset(target_dir: Path, n: int, append: bool = True) -> None:
 
     print(f'Creating images and labels in {target_dir}...')
     for i in tqdm(range_):
-        # create a list of distribution probabilities
-        lst = [1, 2, 2, 5, 10]
-        # normalize the list to sum to 1
-        lst = normalize([lst], norm='l1')[0]
-
-        nof_rings = choice(range(minrings, maxrings + 1), p=lst)
+        nof_rings = choice(range(min_rings, max_rings + 1), p=dist)
         x = Display(input_shape)
-        x.add_ellipses(nof_rings, (minhits, maxhits),
+        x.add_ellipses(nof_rings, (min_hits, max_hits),
                        choice(range(min_noise_hits, max_noise_hits)))
         y = np.array(x.params)
 
@@ -447,11 +453,23 @@ if __name__ == "__main__":
         append = False
         force = False
         silent = False
+    
+    # create a list of distribution probabilities for the number of rings
+    dist = [1, 2, 2, 5, 10]
+    # normalize the list to sum to 1
+    dist = normalize([dist], norm='l1')[0]
+
+    kwargs =  {'min_hits': 8, 'max_hits': 17,
+               'min_rings': 0, 'max_rings': 4,
+               'min_noise_hits': 0, 'max_noise_hits': 7,
+               'input_shape': (72, 32, 1),
+               'dist': dist}
+
 
     if target_dir is not None:
         make_dirs(target_dir)
 
-        add_to_dataset(target_dir=target_dir, n=n_files, append=append)
+        add_to_dataset(target_dir=target_dir, n=n_files, append=append, **kwargs)
 
         # load sample images and labels to verify correctness of the dataset
         transforms = transforms.Compose([transforms.ToTensor()]) # type: ignore
@@ -465,7 +483,7 @@ if __name__ == "__main__":
         for dataset, n in zip(['train', 'val', 'test'], [n_files, n_files//8, n_files//8]):
             target_dir = ROOT_DIR / 'data' / dataset
             make_dirs(target_dir)
-            add_to_dataset(target_dir=target_dir, n=n, append=append)
+            add_to_dataset(target_dir=target_dir, n=n, append=append, **kwargs)
 
         # load sample images and labels to verify correctness of the dataset
         # only load the train dataset

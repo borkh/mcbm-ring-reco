@@ -1,5 +1,6 @@
 import argparse
 import sys
+import yaml
 from pathlib import Path
 from typing import Union, Optional
 
@@ -172,16 +173,16 @@ class EventDataModule(pl.LightningDataModule):
         return [loader_1, loader_2]
 
 
-class ResNet18(torch.nn.Module):
+class TorchModel(torch.nn.Module):
     """
-    Implementation of a ResNet18 model with a single channel input. The
+    Implementation of a ResNet34 model with a single channel input. The
     last fully connected layer is replaced by a linear layer with 25
     outputs. The output is reshaped to a 5x5 matrix.
     """
 
     def __init__(self):
-        super(ResNet18, self).__init__()
-        self.resnet = models.resnet18(weights=None)
+        super(TorchModel, self).__init__()
+        self.resnet = models.resnet34(weights=None)
         # change the input channel to 1
         self.resnet.conv1 = torch.nn.Conv2d(
             1, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -193,7 +194,7 @@ class ResNet18(torch.nn.Module):
         return x
 
 
-class LitResNet18(pl.LightningModule):
+class LitModel(pl.LightningModule):
     """
     LightningModule that defines the training, testing and validation behavior.
 
@@ -205,7 +206,7 @@ class LitResNet18(pl.LightningModule):
     """
 
     def __init__(self, fit_gt=False):
-        super(LitResNet18, self).__init__()
+        super(LitModel, self).__init__()
         # define hyperparameters
         # learning rate is only set for tracking purposes
         # it will be overwritten by the scheduler
@@ -214,7 +215,7 @@ class LitResNet18(pl.LightningModule):
         self.dataset_names = ['test', 'sim_data']
 
         # define model and loss
-        self.model = ResNet18()
+        self.model = TorchModel()
         self.loss = torch.nn.MSELoss()
 
     def forward(self, x):
@@ -289,10 +290,11 @@ class LitResNet18(pl.LightningModule):
 
     def test_epoch_end(self, outputs):
         """
-        Here, outputs contains the 5 worst predictions of each batch which were
+        Outputs contains the 5 worst predictions of each batch, which were
         accumulated in the test_step method. These will be used to log the
         overall 50 worst predictions of the test dataset as images with ring
-        fits.
+        fits. Also the DataFrames containing the ring parameters are logged
+        as well as Histograms of these parameters.
         """
         for idx, name in enumerate(self.dataset_names):
             output = outputs[idx]
@@ -350,19 +352,27 @@ class LitResNet18(pl.LightningModule):
 
 
 if __name__ == '__main__':
-    # define hyperparameters
-    batch_size = 2000
-    n_epochs = 20
-    # dataset_sizes = (1000, None, None)
-    dataset_sizes = (None, None, None)
+    """
+    This is the main entry point of the script. Hyperparameters are loaded from
+    the hyperparameters.yml file.  If you want to run full training and
+    evaluation of a model, simply run this script withouth any arguments, i.e.
+    `python train.py`.
 
+    Otherwise, you can use the following command line arguments:
+    
+    Args:
+        --version (int, optional): If set, the script loads the model checkpoint from the specified version from the
+            MODEL_DIR. Defaults to None.
+        --eval (bool, optional): If set, the script only evaluates the model on the test dataset, without training it.
+            Defaults to False.
+    """
     # parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--eval', action='store_true')
     parser.add_argument('--version', type=int, default=None)
+    parser.add_argument('--eval', action='store_true')
     args = parser.parse_args()
-    evaluate = args.eval
     version = args.version
+    evaluate = args.eval
 
     if evaluate and version is not None:
         try:
@@ -379,8 +389,23 @@ if __name__ == '__main__':
             (MODEL_DIR / 'latest' / 'checkpoints').glob('*.ckpt'))[0]
         print(f'Using checkpoint {ckpt_path} for evaluation...')
 
+    # load hyperparameters from config file
+    with open('hyperparameters.yml', 'r') as f:
+        hp = yaml.load(f, Loader=yaml.FullLoader)
+    
+    batch_size = hp['batch_size']
+    n_epochs = hp['n_epochs']
+    dataset_sizes = hp['dataset_sizes']
+
+    if not evaluate:
+        print(f'Using batch size {batch_size} and {n_epochs} epochs...')
+    print(f'Using dataset sizes {dataset_sizes}...')
+
+    # convert to tuple
+    dataset_sizes = tuple(dataset_sizes.values())
+
     # define model and datamodule
-    model = LitResNet18() if not evaluate else LitResNet18.load_from_checkpoint(ckpt_path,  # type: ignore
+    model = LitModel() if not evaluate else LitModel.load_from_checkpoint(ckpt_path,  # type: ignore
                                                                                 batch_size=batch_size,
                                                                                 dataset_sizes=dataset_sizes,
                                                                                 fit_gt=True)
@@ -418,7 +443,4 @@ if __name__ == '__main__':
 
     # evaluate model
     print('Evaluating model...')
-    t = time.time()
     trainer.test(model, datamodule=dm)
-    t = time.time() - t
-    print(f'Testing took {t:.2f} seconds to run.')
