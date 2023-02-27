@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent
 
+
 def measure_time(func):
     """
     Decorator to measure the time a function takes to run. Takes a function as
@@ -68,7 +69,8 @@ def plot_single_event(image, Y1=None, Y2=None, Y3=None,
                                         (ring[2], ring[3]),
                                         0, 0, 360, color, 2)
                 except cv2.error as e:
-                    print(e, f"Can't draw ellipse with following parameters: {ring}")
+                    print(
+                        e, f"Can't draw ellipse with following parameters: {ring}")
 
     return image
 
@@ -148,6 +150,10 @@ def load_sim_data() -> None:
     # create dataset in data/sim_data
     target_X = ROOT_DIR / 'data' / 'sim_data' / 'X'
     target_y = ROOT_DIR / 'data' / 'sim_data' / 'y'
+    # create directories if they don't exist
+    target_X.mkdir(parents=True, exist_ok=True)
+    target_y.mkdir(parents=True, exist_ok=True)
+
     print(f'Creating dataset in {target_X} and {target_y}...')
 
     for i, (x, y) in enumerate(zip(X, y)):
@@ -157,7 +163,7 @@ def load_sim_data() -> None:
         np.save(str(label_path), y)
 
 
-def ring_params_hist(y: np.ndarray, silent: bool = False) -> None:
+def ring_params_hist(y: np.ndarray, silent: bool = False):
     """
     This function creates a pd.DataFrame from the ring parameters and plots
     histograms of each parameter. These might be useful for visualizing the
@@ -216,7 +222,7 @@ def ring_params_hist(y: np.ndarray, silent: bool = False) -> None:
     return fig
 
 
-def display_images(imgs: np.ndarray, col_width: int = 5, title: string = "", silent: bool = False) -> np.ndarray:
+def display_images(imgs: np.ndarray, col_width: int = 5, title: str = "", silent: bool = False) -> np.ndarray:
     """
     Display a set of images in a grid.
     Parameters
@@ -268,3 +274,7 @@ def fit_rings(images, params, title="", silent=False) -> np.ndarray:
     ring_fits = np.array([plot_single_event(x, y)
                           for x, y in zip(images, params)])
     return display_images(ring_fits, title=title, silent=silent)
+
+
+if __name__ == "__main__":
+    load_sim_data()

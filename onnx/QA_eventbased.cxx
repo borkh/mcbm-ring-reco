@@ -5,6 +5,11 @@
 #include<thread>
 #define CBM_QA_EVENTBASED
 
+/*
+This script defines the QA class for the RICH detector.
+It runs the model in ../models/model.onnx to directly predict on simulation data.
+*/
+
 
 class QA : public FairTask{
 	virtual InitStatus Init();

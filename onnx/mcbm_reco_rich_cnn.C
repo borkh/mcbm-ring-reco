@@ -19,11 +19,10 @@ R__LOAD_LIBRARY(/home/robin/fair_install/FairSoftInst/lib/libonnxruntime.so)
 
 #include "/home/robin/fair_install/FairSoftInst/include/onnxruntime/core/session/onnxruntime_cxx_api.h"
 #include "QA_eventbased.cxx"
-#include "QA_eventbased_hough.cxx"
 #include<cstdlib>
 
 
-void mcbm_reco_rich_cnn(Int_t nEvents = 10000,
+void mcbm_reco_rich_cnn(Int_t nEvents = 1000,
 			 TString dataset = "data/runx",
 			 const char* setupName = "mcbm_beam_2020_03",
 			 bool timebased = false)
@@ -160,9 +159,6 @@ void mcbm_reco_rich_cnn(Int_t nEvents = 10000,
   
     QA* mRichQa = new QA();
     run->AddTask(mRichQa);
-
-    QA_hough* mRichQa_hough = new QA_hough();
-    run->AddTask(mRichQa_hough);
   
   // =========================================================================
   

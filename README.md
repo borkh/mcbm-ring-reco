@@ -36,6 +36,8 @@ Lightning framework.
   project, including functions for visualizing data, fitting ellipses to the
   images, creating histograms and measuring the execution time of other
   functions.
+' `data/sim_data`: Contains two .csv files with simulation data from the mRICH
+  detector. The data was created using the CbmRoot framework. 
 * `onnx`: Contains scripts to run the ONNX model with the CbmRoot framework.
 
 ## Installation
@@ -79,6 +81,10 @@ create one here: https://wandb.ai/site.  Then, follow the steps below:
    overwrite the existing files without asking for confirmation. By default,
    the data is visualized after creation. Set the `--silent` flag to disable
    this.
+   To create a dataset in `data/sim_data` from the CBM simulation data, run:
+   ```
+   python utils.py
+   ```
 
 ## Training the model
    For a complete training and evaluation run, run the following command:

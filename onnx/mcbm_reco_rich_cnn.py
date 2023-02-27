@@ -11,6 +11,12 @@ from utils import *  # nopep8
 script_dir = root_dir / "onnx"
 os.chdir(script_dir)
 
+"""
+This file runs the mcbm_reco_rich_cnn.C script and captures the output.
+The output is then parsed and used to visualize the model performance by
+creating ring fits.
+"""
+
 
 result = subprocess.run(
     ["root", "-b", "-q", "mcbm_reco_rich_cnn.C"], stdout=subprocess.PIPE)

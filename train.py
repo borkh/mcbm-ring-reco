@@ -320,11 +320,11 @@ class LitModel(pl.LightningModule):
             df1 = pd.DataFrame(y.cpu().numpy().reshape(-1, 25))
             df2 = pd.DataFrame(y_hat.cpu().numpy().reshape(-1, 25))
 
-            fig = ring_params_hist(df1.to_numpy(), silent=True)
-            fig = ring_params_hist(df2.to_numpy(), silent=True)
+            fig1 = ring_params_hist(df1.to_numpy(), silent=True)
+            fig2 = ring_params_hist(df2.to_numpy(), silent=True)
 
-            wandb.log({f'Ring parameters on dataset: {name}': fig})
-            wandb.log({f'Predicted ring parameters on dataset: {name}': fig})
+            wandb.log({f'Ring parameters on dataset: {name}': fig1})
+            wandb.log({f'Predicted ring parameters on dataset: {name}': fig2})
             # log dataframes
             wandb.log(
                 {f'Ring parameters on dataset: {name}': wandb.Table(dataframe=df1)})
