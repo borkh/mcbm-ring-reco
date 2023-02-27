@@ -359,7 +359,7 @@ if __name__ == '__main__':
     `python train.py`.
 
     Otherwise, you can use the following command line arguments:
-    
+
     Args:
         --version (int, optional): If set, the script loads the model checkpoint from the specified version from the
             MODEL_DIR. Defaults to None.
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     # load hyperparameters from config file
     with open('hyperparameters.yml', 'r') as f:
         hp = yaml.load(f, Loader=yaml.FullLoader)
-    
+
     batch_size = hp['batch_size']
     n_epochs = hp['n_epochs']
     dataset_sizes = hp['dataset_sizes']
@@ -406,9 +406,9 @@ if __name__ == '__main__':
 
     # define model and datamodule
     model = LitModel() if not evaluate else LitModel.load_from_checkpoint(ckpt_path,  # type: ignore
-                                                                                batch_size=batch_size,
-                                                                                dataset_sizes=dataset_sizes,
-                                                                                fit_gt=True)
+                                                                          batch_size=batch_size,
+                                                                          dataset_sizes=dataset_sizes,
+                                                                          fit_gt=True)
     dm = EventDataModule(batch_size=batch_size, dataset_sizes=dataset_sizes)
 
     # define logger, callbacks and trainer
@@ -433,7 +433,11 @@ if __name__ == '__main__':
         trainer.tune(model, datamodule=dm)
         trainer.fit(model, datamodule=dm)
         model.to_onnx(MODEL_DIR / f'{NAME}{VERSION}' / 'model.onnx',
-                      input_sample=torch.randn(10, 1, 72, 32))
+                      input_sample=torch.randn(10, 1, 72, 32),
+                      dynamic_axes={'input': {0: 'batch_size'},
+                                    'output': {0: 'batch_size'}},
+                      input_names=['input'],
+                      output_names=['output'])
         # create symbolic link to latest model
         source_path = MODEL_DIR / f'version_{VERSION}'
         link_path = MODEL_DIR / 'latest'

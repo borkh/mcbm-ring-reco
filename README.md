@@ -14,9 +14,9 @@ Lightning framework.
 
 * `data/create_data.py`: Creates training, testing and validation data from
   a toymodel. This data includes images that look like events on the mRICH
-  detector with up to five rings as well as the labels --- i.e. ring parameters
-  --- for these images. The data is saved in the specified directory (e.g.
-  --`data/train`). This directory contains two subdirectories: `X` and `y`. The
+  detector with up to five rings as well as the labels - i.e. ring parameters
+  - for these images. The data is saved in the specified directory (e.g.
+  `data/train`). This directory contains two subdirectories: `X` and `y`. The
    `X` directory contains the images and the `y` directory contains the labels.
   The images are stored in `.png` format and the ring parameters are stored in
   5x5 numpy arrays. Each row of the array contains the ring parameters for one
@@ -32,7 +32,7 @@ Lightning framework.
   `EventDataset` and `EventDataModule` classes. The model and the
   training/validation/testing loops are defined in the `TorchModel` and 
   `LitModel` classes.
-* `utils/utils.py`: Contains a variety of utility functions used in the
+* `utils.py`: Contains a variety of utility functions used in the
   project, including functions for visualizing data, fitting ellipses to the
   images, creating histograms and measuring the execution time of other
   functions.
