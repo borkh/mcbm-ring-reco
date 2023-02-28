@@ -27,6 +27,8 @@ Lightning framework.
   ``` [23, 42, 4, 4, 0] ```
 * `hyperparameters.yml`: Contains the hyperparameters used for training the
   model.
+* `data/display_parameters.yml`: Contains the parameters for how the toymodel
+  data is created.
 * `train.py`: This script trains and evaluates a model using the data created by
   `data/create_data.py`. The script defines how the data is loaded with the
   `EventDataset` and `EventDataModule` classes. The model and the
@@ -76,7 +78,7 @@ create one here: https://wandb.ai/site.  Then, follow the steps below:
    The ratio of the number of files in the training, testing and validation
    directories are set to 0.8, 0.1 and 0.1, respectively. The parameters for
    the number of ring, display size and ring parameters can be changed in
-   `data/display_params.yml`.
+   `data/display_parameters.yml`.
 
    Optionally, the `--append` flag can be set to append the data to existing
    files. Otherwise, the existing files will be overwritten. Set `--force` to
