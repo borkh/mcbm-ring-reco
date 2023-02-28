@@ -61,7 +61,8 @@ class Display(np.ndarray):
         _init_ellipse(xshift: int, yshift: int, r: int, rn: float, hits: int):
             Generates a circle with a given radius and a specified amount of noise,
             and shifts it to a specified position.
-        _add_ellipse(*args): Adds an ellipse with a specified number of hits, rotation, and semi-axes to the display object.
+        _add_ellipse(*args): Adds an ellipse with a specified number of hits,
+            rotation, and semi-axes to the display object.
     """
 
     def __new__(cls, shape, dtype=float, buffer=None, offset=0,
