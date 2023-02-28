@@ -1,0 +1,8 @@
+min_hits: 8
+max_hits: 17
+min_rings: 0
+max_rings: 4
+min_noise_hits: 0
+max_noise_hits: 7
+input_shape: [72, 32, 1]
+n_ring_distribution: [1, 2, 2, 5, 10]

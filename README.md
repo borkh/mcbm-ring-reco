@@ -74,17 +74,15 @@ create one here: https://wandb.ai/site.  Then, follow the steps below:
    python data/create_data.py --n_files=<N_FILES> --auto
    ```
    The ratio of the number of files in the training, testing and validation
-   directories are set to 0.8, 0.1 and 0.1, respectively.
+   directories are set to 0.8, 0.1 and 0.1, respectively. The parameters for
+   the number of ring, display size and ring parameters can be changed in
+   `data/display_params.yml`.
 
    Optionally, the `--append` flag can be set to append the data to existing
    files. Otherwise, the existing files will be overwritten. Set `--force` to
    overwrite the existing files without asking for confirmation. By default,
    the data is visualized after creation. Set the `--silent` flag to disable
    this.
-   To create a dataset in `data/sim_data` from the CBM simulation data, run:
-   ```
-   python utils.py
-   ```
 
 ## Training the model
    For a complete training and evaluation run, run the following command:

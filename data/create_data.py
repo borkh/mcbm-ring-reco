@@ -2,8 +2,10 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
+import yaml
 from numpy.random import choice
 from sklearn.datasets import make_circles
 from sklearn.preprocessing import normalize
@@ -260,9 +262,10 @@ def delete_files_by_extension(directory, extension):
 
 
 def add_to_dataset(target_dir: Path, n: int, append: bool = True, min_hits: int = 10,
-                    max_hits: int = 20, min_rings: int = 1, max_rings: int = 4,
-                    min_noise_hits: int = 0, max_noise_hits: int = 0,
-                    input_shape: tuple = (72, 32, 1), dist: list = None) -> None:
+                   max_hits: int = 20, min_rings: int = 1, max_rings: int = 4,
+                   min_noise_hits: int = 0, max_noise_hits: int = 0,
+                   input_shape: tuple = (72, 32, 1),
+                   n_ring_distribution: Optional[list] = None) -> None:
     """
     Adds event display images and corresponding labels to a dataset.
 
@@ -303,7 +306,7 @@ def add_to_dataset(target_dir: Path, n: int, append: bool = True, min_hits: int 
         input_shape: tuple
             The shape of the event display images. Format: (height, width,
             channels).
-        dist: list
+        n_ring_distribution: list
             List of distributions to use for the number of rings. Should be
             normalized to 1. If None, the number of rings is sampled from a
             uniform distribution.
@@ -337,7 +340,8 @@ def add_to_dataset(target_dir: Path, n: int, append: bool = True, min_hits: int 
 
     print(f'Creating images and labels in {target_dir}...')
     for i in tqdm(range_):
-        nof_rings = choice(range(min_rings, max_rings + 1), p=dist)
+        nof_rings = choice(range(min_rings, max_rings + 1),
+                           p=n_ring_distribution)
         x = Display(input_shape)
         x.add_ellipses(nof_rings, (min_hits, max_hits),
                        choice(range(min_noise_hits, max_noise_hits)))
@@ -453,26 +457,25 @@ if __name__ == "__main__":
         append = False
         force = False
         silent = False
-    
-    # create a list of distribution probabilities for the number of rings
-    dist = [1, 2, 2, 5, 10]
-    # normalize the list to sum to 1
-    dist = normalize([dist], norm='l1')[0]
 
-    kwargs =  {'min_hits': 8, 'max_hits': 17,
-               'min_rings': 0, 'max_rings': 4,
-               'min_noise_hits': 0, 'max_noise_hits': 7,
-               'input_shape': (72, 32, 1),
-               'dist': dist}
+    with open(ROOT_DIR / 'data' / 'display_parameters.yml', 'r') as f:
+        display_parameters = yaml.load(f, Loader=yaml.FullLoader)
 
+    display_parameters['input_shape'] = tuple(
+        display_parameters['input_shape'])
+
+    # normalize the n_ring_distribution to sum to 1
+    display_parameters['n_ring_distribution'] = normalize(
+        [display_parameters['n_ring_distribution']], norm='l1')[0]
 
     if target_dir is not None:
         make_dirs(target_dir)
 
-        add_to_dataset(target_dir=target_dir, n=n_files, append=append, **kwargs)
+        add_to_dataset(target_dir=target_dir, n=n_files,
+                       append=append, **display_parameters)
 
         # load sample images and labels to verify correctness of the dataset
-        transforms = transforms.Compose([transforms.ToTensor()]) # type: ignore
+        transforms = transforms.Compose([transforms.ToTensor()])
         ds = EventDataset(target_dir, n_samples=200, transforms=transforms)
         dl = DataLoader(ds, batch_size=200, shuffle=True)
         X, y = next(iter(dl))
@@ -483,12 +486,13 @@ if __name__ == "__main__":
         for dataset, n in zip(['train', 'val', 'test'], [n_files, n_files//8, n_files//8]):
             target_dir = ROOT_DIR / 'data' / dataset
             make_dirs(target_dir)
-            add_to_dataset(target_dir=target_dir, n=n, append=append, **kwargs)
+            add_to_dataset(target_dir=target_dir, n=n,
+                           append=append, **display_parameters)
 
         # load sample images and labels to verify correctness of the dataset
         # only load the train dataset
         target_dir = ROOT_DIR / 'data' / 'train'
-        transforms = transforms.Compose([transforms.ToTensor()])  # type: ignore
+        transforms = transforms.Compose([transforms.ToTensor()])
         ds = EventDataset(target_dir, n_samples=200, transforms=transforms)
         dl = DataLoader(ds, batch_size=200, shuffle=True)
         X, y = next(iter(dl))
